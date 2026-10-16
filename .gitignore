@@ -29,6 +29,7 @@ outputs/
 *.jpg
 *.jpeg
 *.kmz
+*.kml
 # ICEYE sidecar metadata travels with the scene; keep it local too
 *ICEYE*.xml
 *ICEYE*.json

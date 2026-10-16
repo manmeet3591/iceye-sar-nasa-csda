@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 BLOCKED_EXT = {".tif", ".tiff", ".h5", ".hdf5", ".nitf", ".ntf", ".zip", ".tar",
-               ".gz", ".vrt", ".img", ".jp2", ".png", ".jpg", ".jpeg", ".kmz", ".npy"}
+               ".gz", ".vrt", ".img", ".jp2", ".png", ".jpg", ".jpeg", ".kmz", ".kml", ".npy"}
 ALLOWED_PREFIXES = ("data/manifest/",)
 MAX_BYTES = 5 * 1024 * 1024
 NOTEBOOK_IMAGE_MARKERS = ('"image/png"', '"image/jpeg"')

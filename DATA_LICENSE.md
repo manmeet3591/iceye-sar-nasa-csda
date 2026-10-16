@@ -13,7 +13,7 @@ account.
 | Item | Public repo? | Reason |
 |---|---|---|
 | Source code, notebooks without embedded imagery | Yes | Not licensed material |
-| Granule IDs / footprints from NASA CMR (`data/manifest/`) | Yes | CMR metadata is publicly searchable |
+| Scene IDs / footprints from the CSDA STAC catalog (`data/manifest/`) | Yes | Catalog metadata is publicly searchable; no imagery or thumbnails |
 | Raw ICEYE products (SLC, GRD, CSI, QLK, metadata sidecars) | **No** | Licensed material |
 | Calibrated / geocoded / cropped / filtered imagery, image previews | **No** | "Value-added products" are still licensed material |
 | Binary flood masks, flood-depth rasters, summary statistics | Generally yes* | "Derived products" (source not recoverable) |

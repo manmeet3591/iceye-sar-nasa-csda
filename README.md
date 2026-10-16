@@ -12,7 +12,7 @@ Acquisition (CSDA) Program**.
 ## Workflow
 
 ```
- CMR search ──► download ──► calibrate σ⁰ ──► Lee filter ──► geocode (UTM 10 m)
+ STAC search ──► download ──► calibrate σ⁰ ──► Lee filter ──► geocode (UTM 10 m)
  (01_search)   (02_download)        (03_preprocess)
                                                           │
                      USGS 3DEP DEM ─────────────┐         ▼
@@ -23,8 +23,8 @@ Acquisition (CSDA) Program**.
 
 | Step | Script | Output | Shareable publicly? |
 |---|---|---|---|
-| 1 | `scripts/01_search.py` | `data/manifest/kentucky_iceye_granules.csv` | Yes (public CMR metadata) |
-| 2 | `scripts/02_download.py` | `data/raw/…` ICEYE SLC/GRD/CSI/… | **No** |
+| 1 | `scripts/01_search.py` | `data/manifest/kentucky_iceye_scenes.csv` + `.geojson` | Yes (public catalog metadata) |
+| 2 | `scripts/02_download.py` | `data/raw/…` ICEYE SLC/GRD | **No** |
 | 3 | `scripts/03_preprocess.py` | `data/processed/*_sigma0_db.tif` | **No** (value-added) |
 | 4 | `scripts/04_flood_depth.py` | `outputs/<scene>/water_mask.tif`, `flood_depth.tif`, `summary.txt` | Generally yes (derived) — label it |
 
@@ -36,14 +36,30 @@ cd iceye-sar-nasa-csda
 conda env create -f environment.yml && conda activate iceye-csda   # or pip install -r requirements.txt
 pre-commit install                     # blocks accidental commits of imagery
 
-export EARTHDATA_TOKEN="..."           # from https://urs.earthdata.nasa.gov  (never commit it)
+export CSDA_TOKEN="..."                # CSDA access token (never commit it); see docs/STUDENT_ACCESS.md
 
-python scripts/01_search.py                         # all ICEYE granules over Kentucky
+python scripts/01_search.py                         # all ICEYE scenes over Kentucky (no login needed)
 python scripts/02_download.py --dry-run --limit 5   # preview
 python scripts/02_download.py --products GRD        # GRD is what the flood workflow uses
 python scripts/03_preprocess.py
 python scripts/04_flood_depth.py data/processed/<scene>_sigma0_db.tif
 ```
+
+### Data available over Kentucky (CSDA STAC, searched Oct 2026)
+
+10 ICEYE stripmap (~3 m, VV) scenes, each delivered as both **GRD** (GeoTIFF, ~0.8 GB)
+and **SLC** (HDF5, ~3.6 GB); 22.9 GB total:
+
+| Date (UTC) | Satellite | Area (approx.) |
+|---|---|---|
+| 2023-12-23 | ICEYE-X23 | Hopkinsville / Clarksville (-87.3 to -86.8°, 36.4–37.0°N) |
+| 2023-12-29 | ICEYE-X11 | KY–TN border near Nashville (-86.8 to -86.2°, 36.0–36.7°N) |
+| 2024-01-10 | ICEYE-X14 | Hopkinsville / Land Between the Lakes (-87.6 to -87.0°, 36.3–37.0°N) |
+| 2024-05-22 | ICEYE-X2  | Henderson / Ohio River (-88.4 to -87.8°, 37.4–38.0°N) |
+| 2024-05-22 | ICEYE-X8  | Louisville / Ohio River (-86.1 to -85.5°, 37.9–38.6°N) |
+
+Footprints: [`data/manifest/kentucky_iceye_scenes.geojson`](data/manifest/kentucky_iceye_scenes.geojson).
+The 2023-12-23 and 2024-01-10 scenes overlap and can serve as a before/after pair.
 
 Edit `config/kentucky.yaml` to change the bounding box, dates, product types or
 flood parameters.

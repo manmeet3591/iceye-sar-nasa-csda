@@ -3,20 +3,18 @@ name: kentucky
 bbox: [-89.58, 36.49, -81.96, 39.15]   # [west, south, east, north]
 
 # Leave empty to get every date available.
-# Example: temporal: ["2021-02-25T00:00:00Z", "2021-03-15T23:59:59Z"]
+# Example: temporal: ["2024-01-01T00:00:00Z", "2024-06-30T23:59:59Z"]
 temporal: []
 
-# CMR provider for commercial SmallSat data and keyword used to find ICEYE collections.
-cmr:
-  provider: CSDA
-  keyword: ICEYE
+# ICEYE collection in the CSDA STAC catalog (https://csdap.earthdata.nasa.gov/stac)
+stac:
+  collection: iceye
 
-# Products to download. Empty list = every product type found.
-# ICEYE product types: SLC, GRD, CSI, SICD, SIDD, QLK, VID, plus metadata sidecars.
+# Product types to include. Empty list = every type found (GRD and SLC over Kentucky).
 products: []
 
 paths:
-  manifest: data/manifest/kentucky_iceye_granules.csv
+  manifest: data/manifest/kentucky_iceye_scenes.csv
   raw: data/raw
   processed: data/processed
   dem: data/dem
