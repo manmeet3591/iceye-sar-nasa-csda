@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------------------
+# LICENSED DATA GUARD
+# ICEYE imagery obtained through NASA CSDA is licensed material and must NOT be
+# committed to this public repository. See DATA_LICENSE.md.
+# ---------------------------------------------------------------------------
+data/*
+!data/README.md
+!data/manifest/
+data/manifest/*
+!data/manifest/*.csv
+!data/manifest/*.geojson
+outputs/
+
+# Raster / SAR formats (anywhere in the repo)
+*.tif
+*.tiff
+*.TIF
+*.h5
+*.hdf5
+*.nitf
+*.ntf
+*.zip
+*.tar
+*.tar.gz
+*.vrt
+*.img
+*.jp2
+*.png
+*.jpg
+*.jpeg
+*.kmz
+# ICEYE sidecar metadata travels with the scene; keep it local too
+*ICEYE*.xml
+*ICEYE*.json
+
+# Allow documentation figures that are NOT made from ICEYE pixels
+!docs/figures/*.svg
+
+# Secrets
+.env
+*.netrc
+.netrc
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+.venv/
+build/
+dist/

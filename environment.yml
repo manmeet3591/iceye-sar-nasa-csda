@@ -1,0 +1,17 @@
+name: iceye-csda
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - requests
+  - pyyaml
+  - rasterio
+  - h5py
+  - py3dep
+  - rioxarray
+  - matplotlib
+  - jupyterlab
+  - pre-commit
+  - pytest

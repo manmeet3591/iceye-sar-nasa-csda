@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: no-licensed-data
+        name: Block licensed ICEYE data
+        entry: python tools/check_no_licensed_data.py
+        language: system
+        pass_filenames: true

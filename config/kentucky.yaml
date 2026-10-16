@@ -1,0 +1,30 @@
+# Area of interest: Commonwealth of Kentucky (approximate bounding box, WGS84)
+name: kentucky
+bbox: [-89.58, 36.49, -81.96, 39.15]   # [west, south, east, north]
+
+# Leave empty to get every date available.
+# Example: temporal: ["2021-02-25T00:00:00Z", "2021-03-15T23:59:59Z"]
+temporal: []
+
+# CMR provider for commercial SmallSat data and keyword used to find ICEYE collections.
+cmr:
+  provider: CSDA
+  keyword: ICEYE
+
+# Products to download. Empty list = every product type found.
+# ICEYE product types: SLC, GRD, CSI, SICD, SIDD, QLK, VID, plus metadata sidecars.
+products: []
+
+paths:
+  manifest: data/manifest/kentucky_iceye_granules.csv
+  raw: data/raw
+  processed: data/processed
+  dem: data/dem
+  outputs: outputs
+
+flood:
+  speckle_window: 5         # Lee filter window (pixels)
+  target_resolution_m: 10   # geocoded pixel size
+  water_threshold_db: null  # null = automatic Otsu threshold
+  min_water_pixels: 50      # remove isolated water blobs smaller than this
+  depth_smoothing_px: 15    # focal smoothing of water surface elevation
