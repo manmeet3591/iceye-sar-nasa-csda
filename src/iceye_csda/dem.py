@@ -1,16 +1,77 @@
 """Fetch USGS 3DEP elevation (public domain) and align it to a SAR grid."""
 
+import math
+import os
+
 import numpy as np
+
+TILE_URL = ("https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/current/"
+            "{n}/USGS_13_{n}.tif")
+
+
+def _gdal_env():
+    import rasterio
+
+    ca = os.environ.get("CURL_CA_BUNDLE") or os.environ.get("REQUESTS_CA_BUNDLE")
+    if not ca and os.path.exists("/root/.ccr/ca-bundle.crt"):
+        ca = "/root/.ccr/ca-bundle.crt"
+    kw = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif")
+    if ca:
+        kw.update(GDAL_CURL_CA_BUNDLE=ca, CURL_CA_BUNDLE=ca)
+    return rasterio.Env(**kw)
+
+
+def fetch_3dep_tiles(bounds_wgs84, out_path):
+    """Mosaic USGS 3DEP 1/3 arc-second (~10 m) tiles for (west, south, east, north).
+
+    Streams only the needed windows from the public USGS bucket on AWS S3.
+    """
+    import rasterio
+    from rasterio.merge import merge
+
+    w, s, e, n = bounds_wgs84
+    names = [f"n{lat:02d}w{abs(lon):03d}"
+             for lat in range(math.floor(s) + 1, math.ceil(n) + 1)
+             for lon in range(math.floor(w), math.ceil(e))]
+    with _gdal_env():
+        srcs = []
+        for nm in names:
+            try:
+                srcs.append(rasterio.open("/vsicurl/" + TILE_URL.format(n=nm)))
+            except rasterio.errors.RasterioIOError:
+                print(f"   3DEP tile {nm} not available (ocean or outside US) - skipped")
+        if not srcs:
+            raise RuntimeError("No 3DEP tiles cover this area.")
+        mosaic, transform = merge(srcs, bounds=(w, s, e, n), nodata=-999999.0)
+        profile = srcs[0].profile
+        for src in srcs:
+            src.close()
+    dem = mosaic[0].astype("float32")
+    dem[dem <= -999998] = np.nan
+    profile.update(driver="GTiff", height=dem.shape[0], width=dem.shape[1], transform=transform,
+                   dtype="float32", nodata=np.nan, compress="deflate", tiled=True,
+                   blockxsize=512, blockysize=512)
+    with rasterio.open(out_path, "w", **profile) as dst:
+        dst.write(dem, 1)
+    return out_path
 
 
 def fetch_3dep(bounds_wgs84, resolution=10, out_path=None):
-    """Download a 3DEP DEM covering (west, south, east, north) via py3dep."""
-    import py3dep
+    """Get a 3DEP DEM for (west, south, east, north).
 
-    dem = py3dep.get_dem(tuple(bounds_wgs84), resolution=resolution, crs=4326)
-    if out_path:
-        dem.rio.to_raster(out_path, compress="deflate")
-    return dem
+    Tries the 3DEP web service via py3dep first, then falls back to streaming
+    the 1/3 arc-second tiles from S3 (useful where the web service is blocked).
+    """
+    try:
+        import py3dep
+
+        dem = py3dep.get_dem(tuple(bounds_wgs84), resolution=resolution, crs=4326)
+        if out_path:
+            dem.rio.to_raster(out_path, compress="deflate")
+        return out_path
+    except Exception as exc:  # network policy, service outage, ...
+        print(f"   py3dep failed ({type(exc).__name__}); using 3DEP tiles on S3 instead")
+        return fetch_3dep_tiles(bounds_wgs84, out_path)
 
 
 def align_to(dem_path, ref_path):

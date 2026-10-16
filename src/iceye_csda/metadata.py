@@ -19,14 +19,36 @@ KEYS = (
     "polarization",
     "range_spacing",
     "azimuth_spacing",
+    "incidence_coeffs",
+    "orientation",
+    "proj:transform",
+    "proj:code",
 )
+
+# Other spellings of the same fields (ICEYE open-data STAC JSON uses "iceye:" keys).
+ALIASES = {
+    "incidence_angle_near": "incidence_near",
+    "incidence_angle_far": "incidence_far",
+    "view:incidence_angle": "incidence_center",
+    "incidence_angle_coeffs": "incidence_coeffs",
+    "incidence_angle_poly": "incidence_coeffs",
+    "sar:pixel_spacing_range": "range_spacing",
+    "sar:pixel_spacing_azimuth": "azimuth_spacing",
+}
+
+
+def _canon(key):
+    key = ALIASES.get(key, key)
+    if key.startswith("iceye:"):
+        key = ALIASES.get(key[6:], key[6:])
+    return key
 
 
 def _from_xml(path):
     root = ET.parse(path).getroot()
     out = {}
     for el in root.iter():
-        tag = el.tag.split("}")[-1]
+        tag = _canon(el.tag.split("}")[-1])
         if tag in KEYS and el.text and tag not in out:
             out[tag] = el.text.strip()
     return out
@@ -36,7 +58,9 @@ def _flatten(d, out):
     for k, v in d.items():
         if isinstance(v, dict):
             _flatten(v, out)
-        elif k in KEYS and k not in out:
+            continue
+        k = _canon(k)
+        if k in KEYS and k not in out:
             out[k] = v
     return out
 
@@ -72,6 +96,14 @@ def _coerce(md):
                 md[k] = float(md[k])
             except (TypeError, ValueError):
                 pass
+    c = md.get("incidence_coeffs")
+    if isinstance(c, str):
+        c = [v for v in c.replace(",", " ").split()]
+    if c is not None:
+        try:
+            md["incidence_coeffs"] = [float(v) for v in c]
+        except (TypeError, ValueError):
+            md.pop("incidence_coeffs")
     return md
 
 

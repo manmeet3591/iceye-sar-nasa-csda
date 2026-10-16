@@ -23,12 +23,21 @@ def process_grd(path, out_dir, cfg):
     import rasterio
 
     md = read_metadata(path)
-    with rasterio.open(path) as src:
-        dn = src.read(1)
-    sigma0 = sar.calibrate_sigma0(dn, md)
-    sigma0 = sar.lee_filter(sigma0, cfg["flood"]["speckle_window"])
+    res = cfg["flood"]["target_resolution_m"]
     out = out_dir / f"{path.stem}_sigma0_db.tif"
-    sar.geocode(path, sar.to_db(sigma0), out, resolution=cfg["flood"]["target_resolution_m"])
+    with rasterio.open(path) as src:
+        tags = src.tags()
+    geo = sar.georeference(path, md)
+
+    # Multilook to ~target resolution in strips (memory-safe), then calibrate.
+    spacing = max(md.get("range_spacing") or 1.0, md.get("azimuth_spacing") or 1.0)
+    factor = max(1, int(round(res / spacing)))
+    dn2, full_shape = sar.read_multilooked(path, factor)
+    sigma0 = sar.calibrate_intensity(dn2, md, factor, full_shape)
+    sigma0 = sar.lee_filter(sigma0, cfg["flood"]["speckle_window"])
+    sar.geocode_array(sar.to_db(sigma0), out, resolution=res, tags=tags,
+                      **sar.scale_georef(geo, factor))
+    print(f"   multilook {factor}x{factor}, calibration factor {md['calibration_factor']:.3e}")
     return out
 
 
