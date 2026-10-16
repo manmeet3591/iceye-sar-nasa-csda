@@ -8,22 +8,20 @@ The ICEYE data is licensed to approved users only. You must download it with
    State that you are a student working under your instructor's U.S.
    Government-funded research/teaching project (name the project and grant).
 3. Wait for CSDA approval, then accept the ICEYE End User License Agreement.
-4. Get CSDA download credentials (CSDA's download API does not accept a
-   plain Earthdata token). Either:
-   - ask CSDA for API client credentials and set
-     `CSDA_CLIENT_ID` / `CSDA_CLIENT_SECRET`, or
-   - log in at <https://csdap.earthdata.nasa.gov> and set `CSDA_TOKEN` to the
-     access token the site issues you.
-5. Set them in your shell (never put them in code or commit them):
-   ```bash
-   export CSDA_TOKEN="paste-token-here"
-   ```
-6. Run:
+4. Set up the code and list the scenes:
    ```bash
    pip install -r requirements.txt     # or: conda env create -f environment.yml
    pre-commit install                  # blocks accidental commits of imagery
-   python scripts/01_search.py
-   python scripts/02_download.py --products GRD   # ~4 GB
+   python scripts/01_search.py         # writes data/manifest/kentucky_iceye_scenes.csv
+   ```
+5. Download in your browser: log in at <https://csdap.earthdata.nasa.gov>,
+   open the ICEYE collection, find each scene by its ID from the manifest
+   (e.g. `ICEYE_X23_GRD_SM_3146847_20231223T063544`) and download its `.tif`
+   (GRD) or `.h5` (SLC) plus the `.xml` metadata file. GRD scenes are ~0.8 GB
+   each; start with GRD.
+6. Run:
+   ```bash
+   python scripts/02_import_downloads.py ~/Downloads   # moves files into data/raw/<scene>/
    python scripts/03_preprocess.py
    python scripts/04_flood_depth.py data/processed/<scene>_sigma0_db.tif
    ```

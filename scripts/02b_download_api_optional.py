@@ -1,11 +1,11 @@
-"""Step 2: download the scenes listed in the manifest into data/raw/ (git-ignored).
+"""OPTIONAL step 2 (needs CSDA API credentials): scripted download into data/raw/.
 
 Requires CSDA credentials (CSDA_TOKEN, or CSDA_CLIENT_ID + CSDA_CLIENT_SECRET)
 for an account approved for ICEYE data.
 
-    python scripts/02_download.py                   # everything in the manifest
-    python scripts/02_download.py --products GRD    # only GRD scenes (smaller)
-    python scripts/02_download.py --limit 1 --dry-run
+    python scripts/02b_download_api_optional.py                   # everything in the manifest
+    python scripts/02b_download_api_optional.py --products GRD    # only GRD scenes (smaller)
+    python scripts/02b_download_api_optional.py --limit 1 --dry-run
 """
 
 import argparse
