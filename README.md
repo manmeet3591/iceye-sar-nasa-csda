@@ -69,6 +69,9 @@ flood parameters.
 
 ## Method notes (for students)
 
+**Illustrated guide to 14 flood-depth papers:** [docs/figures/README.md](docs/figures/README.md)
+
+
 - **Calibration:** `β⁰ = calibration_factor · DN²`, `σ⁰ = β⁰ · sin(θ)` using the
   incidence angle from ICEYE metadata.
 - **Water detection:** open water is a specular reflector and appears dark.
