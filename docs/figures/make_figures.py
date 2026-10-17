@@ -474,7 +474,7 @@ def p03():
                  ("Find the boundary", s2, "Cells where flooded meets dry land form the flood boundary."),
                  ("Statistics on edge heights", s3, "Collect lidar heights along the boundary, discard outliers, and estimate the water-surface elevation."),
                  ("Depth = level − lidar", s4, "Subtract the lidar ground from the water level.")],
-                "High-resolution SAR time series (X-band COSMO-SkyMed) + lidar DEM.",
+                "High-resolution SAR images (before and during the flood) + lidar DEM.",
                 "Flood extent and flood-depth map — inputs for damage models.",
                 "Veneto (Italy) 2010 flood: fast, robust, far less input data than a hydraulic model.",
                 "Semi-automatic; needs pre-flood images and a good lidar DEM. Closest analogue to ICEYE + 3DEP.")
