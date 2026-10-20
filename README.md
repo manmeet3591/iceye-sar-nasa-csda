@@ -15,18 +15,20 @@ Acquisition (CSDA) Program**.
  STAC search ──► download ──► calibrate σ⁰ ──► Lee filter ──► geocode (UTM 10 m)
  (01_search)   (02_import)          (03_preprocess)
                                                           │
-                     USGS 3DEP DEM ─────────────┐         ▼
-                                                ├──► water mask (Otsu)
-                                                ▼         │
-                                         flood depth (FwDET-style)  (04_flood_depth)
+  USGS 3DEP DEM, GLO-30 HAND, JRC water ──┐         ▼
+                                          ├──► water mask (tile threshold + region growing,
+                                          │     HAND / slope / permanent-water masks)
+                                          ▼         │
+                          flood depth: FwDET and FLEXTH-style       (04_flood_depth)
 ```
 
 | Step | Script | Output | Shareable publicly? |
 |---|---|---|---|
 | 1 | `scripts/01_search.py` | `data/manifest/kentucky_iceye_scenes.csv` + `.geojson` | Yes (public catalog metadata) |
 | 2 | download in browser, then `scripts/02_import_downloads.py` | `data/raw/<scene>/…` ICEYE SLC/GRD | **No** |
+| 2 (no CSDA account) | `scripts/02c_get_open_data.py <scene>` | `data/raw/<scene>/…` ICEYE Open Data | CC BY 4.0, with attribution |
 | 3 | `scripts/03_preprocess.py` | `data/processed/*_sigma0_db.tif` | **No** (value-added) |
-| 4 | `scripts/04_flood_depth.py` | `outputs/<scene>/water_mask.tif`, `flood_depth.tif`, `summary.txt` | Generally yes (derived) — label it |
+| 4 | `scripts/04_flood_depth.py` | `outputs/<scene>/water_mask.tif`, `flood_depth_fwdet.tif`, `flood_depth_flexth.tif`, `summary.txt` | Generally yes (derived) — label it |
 
 ## Quick start
 
@@ -44,6 +46,19 @@ python scripts/02_import_downloads.py ~/Downloads   # sorts files into data/raw/
 python scripts/03_preprocess.py
 python scripts/04_flood_depth.py data/processed/<scene>_sigma0_db.tif
 ```
+
+**No CSDA account yet?** Practise on a free ICEYE Open Data scene (same formats,
+CC BY 4.0, no login). Lake Borgne / Pearl River, Mississippi–Louisiana, 13 Aug 2025:
+
+```bash
+python scripts/02c_get_open_data.py ICEYE_DJ27J0_20250813T103121Z_5743224_X13_SM   # 0.7 GB GRD
+python scripts/03_preprocess.py --input data/raw/ICEYE_DJ27J0_20250813T103121Z_5743224_X13_SM/*_GRD.tif
+python scripts/04_flood_depth.py data/processed/ICEYE_DJ27J0_20250813T103121Z_5743224_X13_SM_GRD_sigma0_db.tif
+```
+
+Outputs from an open-data scene carry the CC BY 4.0 notice; outputs from CSDA
+scenes carry the ICEYE copyright and CSDA acknowledgment. The source is read
+from `data/raw/<scene>/DATA_SOURCE` (written by `02c`); CSDA is assumed otherwise.
 
 ### Data available over Kentucky (CSDA STAC, searched Oct 2026)
 
@@ -75,20 +90,41 @@ flood parameters.
 - **Calibration:** `β⁰ = calibration_factor · DN²`, `σ⁰ = β⁰ · sin(θ)` using the
   incidence angle from ICEYE metadata.
 - **Water detection:** open water is a specular reflector and appears dark.
-  An automatic Otsu threshold splits the σ⁰ (dB) histogram. Known limitations:
-  radar shadow and smooth pavement look like water; flooded forest and urban
-  floods can look *bright* (double bounce). Use a pre-flood `--reference` scene
-  to remove permanent water bodies (rivers, lakes).
-- **Depth:** following FwDET (Cohen et al., 2018, 2019), ground elevations along the
-  flood edge approximate the water surface; depth = water surface − DEM.
-  Accuracy depends strongly on DEM quality and on a clean flood edge.
+  - *Tile (split-based) threshold* (Martinis et al. 2009; Chini et al. 2017): the
+    scene is cut into ~2.5 km tiles and only tiles that clearly contain both water
+    and land are used to choose the threshold, so a scene that is mostly lake or
+    mostly land still gets a sensible value. Falls back to whole-scene Otsu.
+  - *Region growing:* water grows into connected pixels up to 1 dB brighter than
+    the threshold (rough water near shore).
+  - *Masks:* water more than 15 m above the nearest drainage (GLO-30 HAND) or on
+    slopes over 5° (usually radar shadow) is rejected. Permanent water (JRC Global
+    Surface Water, occurrence ≥ 80 %) is labelled separately, so a lake that the
+    radar misses (wind-roughened water looks bright) is still known to be water.
+  - Known limitations: smooth pavement looks like water; flooded forest and urban
+    floods can look *bright* (double bounce). Seasonal water (marsh ponds, tidal
+    flats) is not "permanent" in JRC, so on a non-flood day it shows up as "flood";
+    use a pre-flood `--reference` scene to remove it.
+- **Depth, two ways** (compare them in `summary.txt`):
+  - *FwDET* (Cohen et al. 2018, 2019): each flooded pixel takes the ground elevation
+    of the nearest flood-edge pixel as its water surface; depth = water surface − DEM.
+  - *FLEXTH-style* (concept of Betterle & Salamon 2024; our own implementation):
+    flood-edge pixels on steep ground or out of line with their neighbours (trees,
+    levees, buildings) are dropped; the water level is an inverse-distance average
+    of nearby edge pixels **of the same water body**; small dry holes inside the
+    flood are not treated as shorelines; and the flood may extend up to 500 m into
+    connected ground lying at most 1.5 m below the water level (`water_mask.tif`
+    class 3; SAR misses shallow water, while deep open water would look dark).
+  - Accuracy depends strongly on DEM quality and on a clean flood edge.
+- **water_mask.tif classes:** 0 dry · 1 flood water (SAR) · 2 permanent water ·
+  3 flood added by FLEXTH · 255 no data. Ancillary layers are cached in `data/dem/`;
+  `--no-ancillary` skips HAND and JRC (DEM-only).
 
 ### Suggested exercises
 
-1. Compare Otsu thresholds across scenes and incidence angles.
-2. Add a slope / HAND mask to remove false positives in hilly eastern Kentucky.
-3. Validate depths against USGS stream gauges or high-water marks.
-4. Sensitivity of depth to `depth_smoothing_px` and DEM resolution.
+1. Compare whole-scene Otsu (`threshold_method: otsu`) with the tile threshold.
+2. Vary `hand_max_m` and `slope_max_deg` in hilly eastern Kentucky; count false positives.
+3. Validate FwDET vs FLEXTH depths against USGS stream gauges or high-water marks.
+4. Sensitivity of depth to `depth_smoothing_px`, `flexth.extend_dist_m` and DEM resolution.
 
 ## Tests
 
