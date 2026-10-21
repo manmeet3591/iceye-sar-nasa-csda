@@ -29,6 +29,7 @@ Acquisition (CSDA) Program**.
 | 2 (no CSDA account) | `scripts/02c_get_open_data.py <scene>` | `data/raw/<scene>/…` ICEYE Open Data | CC BY 4.0, with attribution |
 | 3 | `scripts/03_preprocess.py` | `data/processed/*_sigma0_db.tif` | **No** (value-added) |
 | 4 | `scripts/04_flood_depth.py` | `outputs/<scene>/water_mask.tif`, `flood_depth_fwdet.tif`, `flood_depth_flexth.tif`, `summary.txt` | Generally yes (derived) — label it |
+| 5 | `scripts/05_validate_gauges.py` | `outputs/<scene>/gauge_validation.csv`, `gauge_summary.txt` | Yes (USGS data + derived levels) |
 
 ## Quick start
 
@@ -45,6 +46,7 @@ python scripts/01_search.py              # list ICEYE scenes over Kentucky (no l
 python scripts/02_import_downloads.py ~/Downloads   # sorts files into data/raw/<scene>/
 python scripts/03_preprocess.py
 python scripts/04_flood_depth.py data/processed/<scene>_sigma0_db.tif
+python scripts/05_validate_gauges.py data/processed/<scene>_sigma0_db.tif   # USGS gauges
 ```
 
 **No CSDA account yet?** Practise on a free ICEYE Open Data scene (same formats,
@@ -119,11 +121,20 @@ flood parameters.
   3 flood added by FLEXTH · 255 no data. Ancillary layers are cached in `data/dem/`;
   `--no-ancillary` skips HAND and JRC (DEM-only).
 
+- **Validation with USGS gauges** (`05_validate_gauges.py`): for every USGS gauge
+  inside the image, the water-surface elevation at the satellite pass (±30 min)
+  is compared with three SAR estimates within 500 m: the median elevation of the
+  water edge, and the FwDET and FLEXTH water levels (depth + ground). Everything
+  is converted to NAVD88 metres, the 3DEP datum: gage height + gage datum, and
+  NGVD29 values through NOAA VDatum. Gauges with an unknown datum are listed but
+  not scored. Gauges are *not* used to set the water threshold, so they remain an
+  independent check; if you ever tune thresholds to gauges, keep some gauges back.
+
 ### Suggested exercises
 
 1. Compare whole-scene Otsu (`threshold_method: otsu`) with the tile threshold.
 2. Vary `hand_max_m` and `slope_max_deg` in hilly eastern Kentucky; count false positives.
-3. Validate FwDET vs FLEXTH depths against USGS stream gauges or high-water marks.
+3. Run `05_validate_gauges.py` with different `--radius-m`; add USGS high-water marks (STN).
 4. Sensitivity of depth to `depth_smoothing_px`, `flexth.extend_dist_m` and DEM resolution.
 
 ## Tests
