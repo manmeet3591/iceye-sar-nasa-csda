@@ -23,6 +23,19 @@ paths:
 flood:
   speckle_window: 5         # Lee filter window (pixels)
   target_resolution_m: 10   # geocoded pixel size
-  water_threshold_db: null  # null = automatic Otsu threshold
+  threshold_method: tiles   # tiles (split-based) | otsu (whole scene)
+  water_threshold_db: null  # set a number to force a fixed threshold
+  tile_size_px: 256         # tile size for the split-based threshold (~2.5 km at 10 m)
+  region_grow_db: 1.0       # grow water into connected pixels up to threshold + this
   min_water_pixels: 50      # remove isolated water blobs smaller than this
-  depth_smoothing_px: 15    # focal smoothing of water surface elevation
+  hand_max_m: 15            # reject water higher than this above drainage (GLO-30 HAND)
+  slope_max_deg: 5          # reject water on slopes steeper than this (radar shadow)
+  permanent_water_occurrence: 80   # JRC occurrence % counted as normal (non-flood) water
+  depth_smoothing_px: 15    # FwDET: focal smoothing of water surface elevation
+  flexth:                   # FLEXTH-style depth (Betterle & Salamon 2024 concept)
+    edge_slope_max_deg: 5   # ignore flood-edge pixels on steeper ground
+    edge_outlier_mad: 3     # ignore edge elevations this many MADs from their neighbours
+    idw_neighbours: 8       # edge pixels averaged for each water-level estimate
+    extend_dist_m: 500      # how far beyond the SAR flood edge the flood may extend
+    hole_max_m2: 50000      # dry holes inside the flood smaller than this are not shorelines
+    extend_max_depth_m: 1.5 # extension only adds shallow water (deep water would look dark)

@@ -19,5 +19,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install numpy scipy pyyaml requests pytest
+      - run: pip install numpy scipy pyyaml requests affine pytest
       - run: pytest -q
