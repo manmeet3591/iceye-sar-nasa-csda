@@ -129,3 +129,17 @@ def test_flexth_extension_only_adds_shallow_water():
     assert ext_all[:, 30:].sum() > 50 and np.nanmax(uncapped) > 3   # the failure mode
     assert not ext[:, 30:].any()                                       # prevented by the cap
     assert np.nanmax(capped) < 1.6
+
+
+def test_tile_threshold_needs_known_water_in_little_water_scene():
+    # Inland county: almost no water, but fields (-14 dB) next to forest (-6 dB) look bimodal.
+    rng = np.random.default_rng(5)
+    db = rng.normal(-6, 1.0, (512, 512))
+    db[:, :288] = rng.normal(-14, 1.0, (512, 288))       # boundary mid-tile (64 px tiles)
+    db[96:104, :] = rng.normal(-22, 1.0, (8, 512))          # a narrow river
+    river = np.zeros(db.shape, bool)
+    river[96:104, :] = True
+    t_plain, _ = tile_threshold(db, tile=64, min_tiles=2)
+    t_ref, info = tile_threshold(db, tile=64, min_tiles=2, ref_water=river, min_ref_px=20)
+    assert t_plain > -12                       # splits fields from forest: far too high
+    assert t_ref < -15 and info["method"] == "tiles"

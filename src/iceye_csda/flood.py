@@ -52,13 +52,23 @@ def water_mask(sigma0_db, threshold_db=None, min_pixels=50):
 
 
 def tile_threshold(db, tile=256, min_valid=0.8, frac_range=(0.1, 0.9), min_ashman=2.0,
-                   min_sep_db=3.0, min_tiles=5):
+                   min_sep_db=3.0, min_tiles=5, ref_water=None, min_ref_px=20):
     """Scene threshold from bimodal tiles only. Returns (threshold, info).
 
     A tile is used when its Otsu split leaves 10-90 % of pixels on the water
     side, the two classes are well separated (Ashman's D >= 2 and >= 3 dB apart),
     and it is mostly valid data. The threshold is Otsu on the pooled pixels of
     the selected tiles. Falls back to whole-scene Otsu if too few tiles qualify.
+    The scene threshold is the median of the selected tiles' own thresholds
+    (OPERA DSWx-S1 also averages tile thresholds). Pooling all their pixels into
+    one histogram would let a third class (fields next to forest) dominate.
+
+    ref_water: optional boolean map of known water (e.g. JRC occurrence >= 50 %).
+    When given, a tile is only used if it contains at least min_ref_px known-water
+    and min_ref_px known-land pixels, i.e. it straddles a real shoreline. Without
+    this, a scene with very little water (an inland county) selects tiles that are
+    bimodal for other reasons (fields next to forest) and the threshold is far too
+    high. OPERA DSWx-S1 uses the same safeguard.
     """
     rows, cols = db.shape
     selected, tile_t = [], []
@@ -67,6 +77,10 @@ def tile_threshold(db, tile=256, min_valid=0.8, frac_range=(0.1, 0.9), min_ashma
         for c in range(0, cols - tile + 1, tile):
             v = db[r:r + tile, c:c + tile].ravel()
             n_tiles += 1
+            if ref_water is not None:
+                rw = ref_water[r:r + tile, c:c + tile]
+                if rw.sum() < min_ref_px or (~rw).sum() < min_ref_px:
+                    continue
             v = v[np.isfinite(v)]
             if v.size < min_valid * tile * tile:
                 continue
@@ -86,7 +100,8 @@ def tile_threshold(db, tile=256, min_valid=0.8, frac_range=(0.1, 0.9), min_ashma
         return otsu_threshold(db), info
     info["method"] = "tiles"
     info["tile_threshold_range"] = (float(np.min(tile_t)), float(np.max(tile_t)))
-    return otsu_threshold(np.concatenate(selected)), info
+    info["pooled_otsu"] = otsu_threshold(np.concatenate(selected))
+    return float(np.median(tile_t)), info
 
 
 def grow_water(db, seeds, grow_threshold):
@@ -112,7 +127,8 @@ def _remove_small(mask, min_pixels):
 
 
 def map_water(sigma0_db, method="tiles", threshold_db=None, tile=256, grow_db=1.0,
-              min_pixels=50, hand=None, hand_max=15.0, slope=None, slope_max=5.0):
+              min_pixels=50, hand=None, hand_max=15.0, slope=None, slope_max=5.0,
+              ref_water=None):
     """Open-water mask with exclusion layers. Returns (mask, info).
 
     method: "tiles" (split-based), "otsu" (whole scene) or "fixed" (threshold_db).
@@ -123,7 +139,7 @@ def map_water(sigma0_db, method="tiles", threshold_db=None, tile=256, grow_db=1.
     if threshold_db is not None or method == "fixed":
         t, info = float(threshold_db), {"method": "fixed"}
     elif method == "tiles":
-        t, info = tile_threshold(sigma0_db, tile=tile)
+        t, info = tile_threshold(sigma0_db, tile=tile, ref_water=ref_water)
     else:
         t, info = otsu_threshold(sigma0_db), {"method": "otsu"}
     info["threshold_db"] = t
