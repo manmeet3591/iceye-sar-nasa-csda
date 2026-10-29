@@ -187,5 +187,289 @@ def gauge_thresholding():
         note="Expected-wet area assumes a flat water surface over ±1.5 km.")
 
 
+# =================================================== OPERA DSWx-S1, 8 steps ==
+from make_figures import big_arrow, para, sar_tile  # noqa: E402
+
+DARK = "#1F2230"
+
+
+def membership(x, y, w, h, kind, label):
+    """Tiny fuzzy membership curve: 'Z' (1 on the left) or 'S' (1 on the right)."""
+    out = [line(x, y + h, x + w, y + h, C["muted"], 1.2), line(x, y, x, y + h, C["muted"], 1.2)]
+    pts = []
+    for i in range(31):
+        a = i / 30
+        z = 1 if a < .3 else 0 if a > .7 else .5 + .5 * math.cos(math.pi * (a - .3) / .4)
+        m = z if kind == "Z" else 1 - z
+        pts.append((x + a * w, y + h - m * (h - 2)))
+    out.append(poly(pts, stroke=C["sea"], sw=2.2, closed=False))
+    out.append(text(x - 8, y + h - 3, label, 12, 700, C["ink"], "end"))
+    return "".join(out)
+
+
+def d1(x, y, w, h):
+    tw = (w - 16) / 2
+    out = [sar_tile(x, y + 26, tw, 110, True)]
+    out.append(sar_tile(x + tw + 16, y + 26, tw, 110, True))
+    out.append(rect(x + tw + 16, y + 26, tw, 110, "#000000", r=6, op=.28))
+    out.append(text(x + tw / 2, y + 16, "VV", 17, 800, C["ink"], "middle"))
+    out.append(text(x + tw * 1.5 + 16, y + 16, "VH", 17, 800, C["ink"], "middle"))
+    out.append(text(x + tw / 2, y + 156, "send V · hear V", 12, 600, C["muted"], "middle"))
+    out.append(text(x + tw * 1.5 + 16, y + 156, "send V · hear H", 12, 600, C["muted"], "middle"))
+    out.append(text(x + tw / 2, y + 176, "sharp water/land contrast", 11.5, 600, C["sea"], "middle"))
+    out.append(text(x + tw * 1.5 + 16, y + 176, "less hurt by wind", 11.5, 600, C["sea"], "middle"))
+    return "".join(out)
+
+
+def d2(x, y, w, h):
+    out = [sar_tile(x, y + 4, 150, 120, True)]
+    for i in range(1, 5):
+        out.append(line(x + i * 30, y + 4, x + i * 30, y + 124, "white", 1, "3 3"))
+    for j in range(1, 4):
+        out.append(line(x, y + 4 + j * 30, x + 150, y + 4 + j * 30, "white", 1, "3 3"))
+    for (i, j) in ((0, 1), (2, 2), (4, 1)):
+        out.append(rect(x + i * 30 + 1, y + 4 + j * 30 + 1, 28, 28, "none", C["edge"], r=2, sw=3))
+    out.append(text(x + 75, y + 142, "use only tiles that cross", 11.5, 700, C["edge"], "middle"))
+    out.append(text(x + 75, y + 157, "a known (JRC) shoreline", 11.5, 700, C["edge"], "middle"))
+    hb = [2, 6, 9, 5, 2, 1, 2, 6, 12, 15, 10, 4]
+    cols = [C["water"]] * 5 + ["#B9AFA0"] * 7
+    out.append(histogram(x + 170, y + 10, w - 172, 64, hb, .42, cols))
+    out.append(text(x + 170 + (w - 172) * .42, y + 92, "KI threshold", 11.5, 800, C["edge"], "middle"))
+    out.append(text(x + 172, y + 112, "two clear humps?", 11.5, 700, C["ink"]))
+    out.append(text(x + 172, y + 127, "Ashman D > 2", 11, 500, C["muted"]))
+    out.append(text(x + 172, y + 141, "surface ratio > 0.1", 11, 500, C["muted"]))
+    gx, gy, gw = x + 172, y + 160, w - 176
+    for k in range(20):
+        c = int(150 + 80 * k / 19)
+        out.append(rect(gx + k * gw / 20, gy, gw / 20 + .5, 14, f"rgb(60,{c},{230 - k * 3})", r=0))
+    out.append(text(gx + gw / 2, gy + 30, "threshold map (interpolated)", 11, 600, C["muted"], "middle"))
+    return "".join(out)
+
+
+def d3(x, y, w, h):
+    out = []
+    rows = (("Z", "dark VV"), ("Z", "dark VH"), ("Z", "flat slope"), ("Z", "low HAND"),
+            ("S", "JRC: often water"))
+    for i, (k, lab) in enumerate(rows):
+        out.append(membership(x + 112, y + 6 + i * 36, 92, 26, k, lab))
+    ax_ = x + 214
+    for i in range(5):
+        out.append(line(ax_, y + 19 + i * 36, ax_ + 30, y + 92, C["muted"], 1.3))
+    out.append(circle(x + w - 44, y + 92, 34, C["sea"]))
+    out.append(text(x + w - 44, y + 88, "0.83", 18, 800, "white", "middle"))
+    out.append(text(x + w - 44, y + 106, "average", 11, 600, "white", "middle"))
+    out.append(text(x + 112, y + 190, "each clue → 0 (land) … 1 (water)", 11.5, 600, C["muted"]))
+    return "".join(out)
+
+
+GRID4 = [[.2, .3, .4, .5, .3, .2, .1, .2],
+         [.3, .6, .7, .9, .8, .4, .2, .1],
+         [.4, .7, .9, .95, .9, .6, .3, .2],
+         [.3, .5, .8, .9, .7, .3, .2, .65],
+         [.2, .3, .4, .5, .4, .2, .3, .7],
+         [.1, .2, .2, .3, .2, .1, .2, .3]]
+
+
+def d4(x, y, w, h):
+    R, Cn = len(GRID4), len(GRID4[0])
+    cw, ch = (w - 10) / Cn, 22
+    seeds = {(r, c) for r in range(R) for c in range(Cn) if GRID4[r][c] >= .8}
+    grown = set(seeds)
+    changed = True
+    while changed:
+        changed = False
+        for r in range(R):
+            for c in range(Cn):
+                if (r, c) in grown or GRID4[r][c] < .6:
+                    continue
+                if any((r + dr, c + dc) in grown for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                    grown.add((r, c))
+                    changed = True
+    out = []
+    for r in range(R):
+        for c in range(Cn):
+            v = GRID4[r][c]
+            if (r, c) in seeds:
+                fill, fc = C["sea"], "white"
+            elif (r, c) in grown:
+                fill, fc = C["water"], "white"
+            elif v >= .6:
+                fill, fc = "#D7D7D7", C["ink"]
+            else:
+                fill, fc = C["land"], C["muted"]
+            out.append(rect(x + c * cw, y + 6 + r * ch, cw - 2, ch - 2, fill, r=3))
+            out.append(text(x + c * cw + cw / 2 - 1, y + 6 + r * ch + 15, f"{v:.2f}".lstrip("0"), 10.5,
+                            700, fc, "middle"))
+    ly = y + 152
+    for lab, col, dx in (("seed ≥ 0.8", C["sea"], 0), ("grown ≥ 0.6", C["water"], 100),
+                         ("≥ 0.6, not connected", "#D7D7D7", 0)):
+        yy = ly if dx or lab.startswith("seed") else ly + 20
+        out.append(rect(x + dx, yy - 10, 12, 12, col, r=2))
+        out.append(text(x + dx + 16, yy, lab, 11.5, 600, C["muted"]))
+    return "".join(out)
+
+
+def field(x, y, w, h):
+    out = [rect(x, y, w, h, "#D8C39A", r=6)]
+    for i in range(1, 7):
+        out.append(line(x + 4, y + i * h / 7, x + w - 4, y + i * h / 7, "#BFA67A", 2))
+    return "".join(out)
+
+
+def d5(x, y, w, h):
+    out = [field(x + 4, y + 10, 130, 80)]
+    out.append(line(x + 14, y + 18, x + 124, y + 82, C["pt"], 5))
+    out.append(line(x + 124, y + 18, x + 14, y + 82, C["pt"], 5))
+    out.append(text(x + 69, y + 110, "dry bare field: dark", 12, 700, C["ink"], "middle"))
+    out.append(text(x + 69, y + 126, "but NOT water", 12, 700, C["pt"], "middle"))
+    bx = x + 150
+    out.append(rect(bx, y + 8, w - 150, 120, "#F4F1EA", C["line"], r=10, sw=1.5))
+    out.append(text(bx + 10, y + 30, "rule out as water if:", 12, 800, C["ink"]))
+    out.append(text(bx + 10, y + 52, "land cover = bare,", 12, 600, C["ink"]))
+    out.append(text(bx + 10, y + 68, "grass or crops", 12, 600, C["ink"]))
+    out.append(text(bx + 10, y + 90, "VV < −13.4 dB", 12, 800, C["sea"]))
+    out.append(text(bx + 10, y + 106, "and VH < −22.2 dB", 12, 800, C["sea"]))
+    out.append(text(x, y + 160, "JRC seasonality keeps water that", 11.5, 600, C["muted"]))
+    out.append(text(x, y + 176, "is normal there (wet seasons).", 11.5, 600, C["muted"]))
+    return "".join(out)
+
+
+def blob(cx, cy, r, op=.9, fill=None):
+    pts = [(cx + r * (1 + .18 * math.sin(3 * a)) * math.cos(a), cy + r * .7 * (1 + .15 * math.cos(2 * a))
+            * math.sin(a)) for a in [i * 2 * math.pi / 40 for i in range(40)]]
+    return poly(pts, fill=fill or C["water"], stroke=C["sea"], sw=2, op=op)
+
+
+def d6(x, y, w, h):
+    out = []
+    for i, (ok, hb) in enumerate(((True, [2, 7, 5, 1, 1, 5, 9, 4]), (False, [1, 3, 7, 10, 8, 4, 2, 1]))):
+        bx = x + i * (w / 2 + 4)
+        out.append(blob(bx + 52, y + 46, 34, fill=C["water"] if ok else "#9CC8EE"))
+        pts = [(bx + 52 + 50 * math.cos(a), y + 46 + 36 * math.sin(a))
+               for a in [k * 2 * math.pi / 40 for k in range(40)]]
+        out.append(poly(pts, stroke=C["edge"], sw=1.8, dash="4 4"))
+        out.append(histogram(bx + 8, y + 102, w / 2 - 26, 46, hb, None,
+                             [C["water"]] * 4 + ["#B9AFA0"] * 4 if ok else ["#B9AFA0"] * 8))
+        out.append(text(bx + (w / 2 - 18) / 2, y + 172, "two humps → keep" if ok else "one hump → remove",
+                        12, 800, C["ok"] if ok else C["pt"], "middle"))
+    out.append(text(x, y + 192, "pixels along each water body's edge", 11.5, 600, C["muted"]))
+    return "".join(out)
+
+
+def d7(x, y, w, h):
+    out = [rect(x, y + 4, w, 150, "#F4F8FC", r=8)]
+    wy = y + 118
+    out.append(rect(x, wy, w, 36, C["water"], r=0, op=.85))
+    trunks = [x + 30 + k * 50 for k in range(4)]
+    for tx in trunks:
+        out.append(line(tx, wy + 30, tx, y + 70, "#6B4F2E", 6))
+        out.append(circle(tx, y + 64, 15, "#74A35B"))
+    out.append(text(x + 8, wy + 26, "water", 12, 700, "white"))
+    # satellite top-right; pulse hits the water, bounces to a stem, returns to the satellite
+    sx, sy = x + w - 26, y + 26
+    out.append(mf.satellite(sx, sy, .55))
+    tx = trunks[-1]
+    px_, py_ = tx + 34, wy                 # water hit
+    qx, qy = tx + 3, wy - 26               # stem hit
+    out.append(line(sx - 6, sy + 14, px_, py_, C["edge"], 2.5))
+    out.append(line(px_, py_, qx, qy, C["edge"], 2.5))
+    out.append(line(qx, qy, sx - 16, sy + 12, C["edge"], 2.5, "6 4"))
+    out.append(text(x + w - 8, y + 74, "double", 12, 800, C["edge"], "end"))
+    out.append(text(x + w - 8, y + 89, "bounce", 12, 800, C["edge"], "end"))
+    out.append(text(x, y + 176, "VV bright, VH much weaker → high VV/VH", 12, 800, C["ink"]))
+    out.append(text(x, y + 193, "mapped only in wetland / vegetation classes", 11.5, 600, C["muted"]))
+    return "".join(out)
+
+
+def d8(x, y, w, h):
+    classes = [("0", "not water", C["land"]), ("1", "open water", C["water"]),
+               ("3", "inundated vegetation", "#2A9D8F"), ("250", "HAND masked", "#B8B8B8"),
+               ("251", "layover / shadow", "#7F7F7F"), ("255", "no data", "#FFFFFF")]
+    pat = ["0000110000", "0001111000", "0011133100", "0001111000", "4400000055", "4440000055"]
+    key = {"0": C["land"], "1": C["water"], "3": "#2A9D8F", "4": "#B8B8B8", "5": "#7F7F7F"}
+    cw = 13
+    for r, row in enumerate(pat):
+        for c, k in enumerate(row):
+            out_ = rect(x + c * cw, y + 8 + r * cw, cw - 1, cw - 1, key[k], r=1)
+            if r == 0 and c == 0:
+                out = [out_]
+            else:
+                out.append(out_)
+    out.append(text(x, y + 104, "MGRS tile, 30 m", 11.5, 700, C["muted"]))
+    for i, (code, lab, col) in enumerate(classes):
+        yy = y + 18 + i * 22
+        out.append(rect(x + 146, yy - 11, 13, 13, col, C["line"], r=2, sw=1))
+        out.append(text(x + 166, yy, code, 12, 800, C["ink"]))
+        out.append(text(x + 196, yy, lab, 12, 500, C["ink"]))
+    out.append(text(x, y + 168, "layers: WTR (classes), BWTR (water yes/no),", 11.5, 600, C["muted"]))
+    out.append(text(x, y + 184, "CONF (confidence), DIAG (diagnostics)", 11.5, 600, C["muted"]))
+    return "".join(out)
+
+
+def dswx_s1():
+    W2, H2 = 1600, 1220
+    fc, fl = "#E76F51", "#FBE0D8"
+    o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W2}" height="{H2}" viewBox="0 0 {W2} {H2}">',
+         rect(0, 0, W2, H2, C["bg"], r=0)]
+    o.append(chip(48, 30, "Operational product · NASA/JPL OPERA", fc, size=15))
+    o.append(text(48, 100, "How OPERA DSWx-S1 turns Sentinel-1 VV + VH into a water map", 38, 800))
+    o.append(text(48, 134, "Dynamic Surface Water eXtent from Sentinel-1 · 30 m · open data since 2024", 19,
+                  500, C["muted"]))
+    o.append(rect(48, 156, W2 - 96, 66, fl, fc, r=18, sw=2))
+    o.append(text(76, 197, "Big idea:", 22, 800, fc))
+    o.append(text(196, 197, "No single clue is trusted: radar darkness in two polarisations is weighed against "
+                  "terrain and history.", 20, 600))
+    steps = [
+        ("Two echoes of one pulse", d1,
+         "Sentinel-1 sends a vertically polarised pulse and records two echoes: VV and VH. OPERA's RTC product "
+         "corrects both for terrain on a 30 m grid; bursts are mosaicked so a scene holds enough water and land."),
+        ("Threshold map from shore tiles", d2,
+         "Only tiles with two clear humps that also cross a known JRC shoreline are used. Kittler–Illingworth "
+         "gives each a threshold; these are interpolated into a map, for VV and for VH."),
+        ("Turn every clue into a score", d3,
+         "Fuzzy logic: dark VV, dark VH, flat ground, low HAND and 'often water in the past' each become a "
+         "0–1 water-likeness score. Their average is the composite score."),
+        ("Grow water from sure seeds", d4,
+         "Pixels scoring ≥ 0.8 are sure water. Water spreads to neighbours scoring ≥ 0.6, but only when "
+         "connected to a seed; isolated look-alikes stay out."),
+        ("Remove dark land", d5,
+         "Bare soil, sand or smooth fields can be as dark as water. If land cover allows it and both "
+         "polarisations are very dark, the pixel is ruled not-water."),
+        ("Check water-body edges", d6,
+         "Along a real shoreline, backscatter splits into a water hump and a land hump. Objects whose edge "
+         "pixels show no such split are removed as false alarms."),
+        ("Find water under vegetation", d7,
+         "Under plants, the pulse bounces water → stem → satellite and returns bright, mostly in VV. A high "
+         "VV/VH ratio inside vegetated land-cover classes is mapped as inundated vegetation."),
+        ("Mask and package", d8,
+         "Pixels too high above drainage (HAND) or in radar layover/shadow are flagged. Results are cut "
+         "into 30 m MGRS tiles with four layers."),
+    ]
+    px0, pw, gap, ph = 48, 358, 22, 418
+    for i, (title, ill, cap) in enumerate(steps):
+        rr, cc = divmod(i, 4)
+        x, y = px0 + cc * (pw + gap), 248 + rr * (ph + 24)
+        o.append(rect(x, y, pw, ph, "white", C["line"], r=18, sw=2))
+        o.append(circle(x + 30, y + 32, 18, fc))
+        o.append(text(x + 30, y + 39, str(i + 1), 18, 800, "white", "middle"))
+        o.append(para(x + 58, y + 30, title, pw - 70, 18, 1.2, weight=800))
+        o.append(f"<g>{ill(x + 20, y + 74, pw - 40, 200)}</g>")
+        o.append(para(x + 20, y + 300, cap, pw - 36, 14.5, 1.36))
+        if cc < 3:
+            o.append(f'<path d="M{x + pw + 4},{y + ph / 2 - 10} L{x + pw + gap - 4},{y + ph / 2} '
+                     f'L{x + pw + 4},{y + ph / 2 + 10} Z" fill="{fc}" opacity=".85"/>')
+    o.append(text(48, H2 - 40, "Sources: OPERA DSWx-S1/NI ATBD (JPL D-108763 Rev A, May 2024); DSWx-S1 product "
+                  "specification Rev A; metadata of DSWx-S1 tiles over Warren County, KY (Feb 2025).", 13, 500,
+                  C["muted"]))
+    o.append(text(48, H2 - 20, "Current product files name GLAD Global Land Cover 2020 (the ATBD names ESA "
+                  "WorldCover) and some different fuzzy ranges (e.g. HAND 0–15 m). Schematic illustration.", 13,
+                  500, C["muted"], italic=True))
+    o.append("</svg>")
+    mf.OUT.mkdir(parents=True, exist_ok=True)
+    (mf.OUT / "opera_dswx_s1.svg").write_text("".join(o))
+    return "opera_dswx_s1"
+
+
 if __name__ == "__main__":
     print(mf.OUT / f"{gauge_thresholding()}.svg")
+    print(mf.OUT / f"{dswx_s1()}.svg")

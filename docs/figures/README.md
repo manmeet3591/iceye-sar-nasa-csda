@@ -83,3 +83,5 @@ Flood extent by change detection / local thresholding with slope, HAND and perma
 ![Gauge-based thresholding](methods/gauge_based_thresholding.svg)
 
 Regenerate with `python docs/figures/make_method_figures.py`.
+
+![How OPERA DSWx-S1 works](methods/opera_dswx_s1.svg)
