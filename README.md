@@ -84,6 +84,23 @@ Scripted downloads are possible with CSDA API credentials
 Edit `config/kentucky.yaml` to change the bounding box, dates, product types or
 flood parameters.
 
+## Testbed: Bowling Green / Warren County
+
+A multi-sensor flood-mapping testbed (`config/warren.yaml`). Phase 0 builds a
+data calendar: which floods happened since 2016 and which satellites imaged them.
+
+```bash
+# Groundsource flood reports (Google Research, CC BY 4.0, 667 MB):
+# https://doi.org/10.5281/zenodo.18647054 -> data/external/groundsource/groundsource_2026.parquet
+python scripts/t0_testbed_calendar.py
+```
+
+It queries NASA CSDA (ICEYE, Umbra, Capella, Airbus SAR), NASA CMR (Sentinel-1
+OPERA RTC, NISAR GCOV, OPERA DSWx-S1/HLS), USGS gauges 03314500 (Barren River at
+Bowling Green) and 03314000 (Drakes Creek near Alvaton) with NWS flood stages,
+and Groundsource. Outputs (metadata only) go to `outputs/warren/`:
+`flood_events.csv`, `acquisitions.csv`, `calendar.png`, `event_matrix.png`.
+
 ## Method notes (for students)
 
 **Illustrated guide to 14 flood-depth papers:** [docs/figures/README.md](docs/figures/README.md)

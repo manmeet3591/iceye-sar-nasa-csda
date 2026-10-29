@@ -12,6 +12,9 @@ dependencies:
   - py3dep
   - rioxarray
   - matplotlib
+  - pandas
+  - shapely
+  - pyarrow
   - jupyterlab
   - pre-commit
   - pytest

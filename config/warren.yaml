@@ -1,0 +1,39 @@
+# Bowling Green / Warren County, Kentucky flood-mapping testbed
+name: warren
+county_geoid: "21227"                      # Census GEOID, Warren County KY
+bbox: [-86.674, 36.776, -86.114, 37.191]  # [west, south, east, north], WGS84
+start: "2016-01-01"                        # Sentinel-1 OPERA RTC begins 2016
+
+# Data sources in the calendar. coverage = fraction of the county imaged.
+csda_collections:                          # commercial SAR via NASA CSDA (licensed)
+  iceye: ICEYE (X-band)
+  umbra: Umbra (X-band)
+  capellaspace: Capella (X-band)
+  airbus: Airbus SAR (X-band)
+cmr_collections:                           # NASA Earthdata CMR (open)
+  OPERA_L2_RTC-S1_V1: Sentinel-1 RTC (C-band, 30 m)
+  NISAR_L2_GCOV_BETA_V1: NISAR GCOV beta (L-band)
+  NISAR_L2_GCOV_PROVISIONAL_V1: NISAR GCOV provisional (L-band)
+  NISAR_UR_L2: NISAR urgent response L2 (L-band)
+  OPERA_L3_DSWX-S1_V1: OPERA DSWx-S1 water map
+  OPERA_L3_DSWX-HLS_V1: OPERA DSWx-HLS water map (optical, clouds)
+min_coverage: 0.2                          # ignore acquisitions covering < 20 % of the county
+max_cloud_cover: 50                        # drop optical dates with more cloud (when known)
+
+# USGS gauges with NWS flood categories (ft, gage height). From api.water.noaa.gov/nwps.
+gauges:
+  "03314500": {nws: BWGK2, name: Barren River at Bowling Green, action: 26, minor: 28, moderate: 32, major: 45}
+  "03314000": {nws: ALVK2, name: Drakes Creek near Alvaton, action: 22, minor: 24, moderate: 35, major: 42}
+
+match_window_days: 2       # an acquisition "sees" a flood if within this many days of it
+groundsource_cluster_days: 3   # Groundsource reports this close together form one event
+
+paths:
+  groundsource: data/external/groundsource/groundsource_2026.parquet
+  testbed: data/testbed/warren       # caches (boundary, raw query results)
+  outputs: outputs/warren
+  # keys below are required by the shared config loader
+  manifest: data/manifest
+  raw: data/raw
+  processed: data/processed
+  dem: data/dem
