@@ -85,3 +85,7 @@ Flood extent by change detection / local thresholding with slope, HAND and perma
 Regenerate with `python docs/figures/make_method_figures.py`.
 
 ![How OPERA DSWx-S1 works](methods/opera_dswx_s1.svg)
+
+![OPERA DSWx-S1 exact rules](methods/opera_dswx_s1_exact.svg)
+
+Real example values come from `scripts/t1_opera_rules_check.py` (Sentinel-1, 17 Feb 2025, Warren County).
