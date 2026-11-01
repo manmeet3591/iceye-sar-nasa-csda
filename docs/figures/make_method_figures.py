@@ -188,7 +188,7 @@ def gauge_thresholding():
 
 
 # =================================================== OPERA DSWx-S1, 8 steps ==
-from make_figures import big_arrow, para, sar_tile  # noqa: E402
+from make_figures import big_arrow, legend, para, sar_tile  # noqa: E402
 
 DARK = "#1F2230"
 
@@ -754,7 +754,175 @@ def dswx_s1_quant():
     return "opera_dswx_s1_exact"
 
 
+# ======================================================== testbed story ==
+# Real values: phase 0 (outputs/warren/flood_events.csv, acquisitions.csv) and phase 1
+# (outputs/warren/phase1/summary.txt). Nothing below is invented.
+STORY = dict(
+    sensors=[("Sentinel-1 (C-band)", 571), ("OPERA DSWx-S1 maps", 107), ("NISAR (L-band)", 58),
+             ("ICEYE (X-band)", 0), ("Umbra (X-band)", 0)],
+    years=list(range(2016, 2026)),
+    floods=[3, 6, 3, 7, 3, 6, 6, 2, 6, 9], seen_s1=[1, 5, 3, 6, 2, 6, 5, 2, 5, 8],
+    n_floods=51, n_seen=46, gs_reports=182,
+    auto_t=-9.0, auto_km2=650, gauge_t=-17.25, ours_km2=25.3, opera_km2=25.9, f1=0.79,
+    stage_ft=34.67, wse_m=135.3, high_t_barren=-14.0, high_t_drakes=-12.5,
+)
+
+
+def t1_question(x, y, w, h):
+    out = [mf.river_plan(x, y + 6, w, 170, True)]
+    for cx, cy in ((x + 70, y + 40), (x + 330, y + 150), (x + 390, y + 34)):
+        out.append(circle(cx, cy, 9, "#9CC8EE", C["sea"], 1.5))
+    out.append(text(x + 330, y + 30, "sinkholes (karst)", 12, 700, C["sea"], "middle"))
+    out.append(gauge_icon(x + 210, y + 66, 46, .5))
+    out.append(text(x + w / 2, y + 204, "Barren River · Drakes Creek · Bowling Green", 13, 700, C["ink"], "middle"))
+    out.append(text(x + w / 2, y + 226, "where? how deep? on which days?", 13, 600, C["muted"], "middle"))
+    return "".join(out)
+
+
+def t2_ingredients(x, y, w, h):
+    S = STORY
+    out = []
+    mx = max(v for _, v in S["sensors"])
+    for i_, (lab, v) in enumerate(S["sensors"]):
+        yy = y + 8 + i_ * 30
+        out.append(text(x, yy + 15, lab, 12.5, 700, C["ink"]))
+        bw = (w - 250) * v / mx
+        out.append(rect(x + 168, yy, max(bw, 2), 20, C["sea"] if v else C["pt"], r=4))
+        out.append(text(x + 174 + bw, yy + 15, f"{v} dates" if v else "0 — not imaged here", 12, 800,
+                        C["sea"] if v else C["pt"]))
+    out.append(chip(x, y + 168, "2 USGS river gauges", C["ok"], size=13))
+    out.append(chip(x + 190, y + 168, f"{S['gs_reports']} news flood reports", "#9D7CD8", size=13))
+    out.append(text(x, y + 226, "radar sees through cloud, day and night", 12.5, 600, C["muted"]))
+    return "".join(out)
+
+
+def t3_calendar(x, y, w, h):
+    S = STORY
+    out = [line(x, y + 180, x + w, y + 180, C["muted"], 1.5)]
+    n = len(S["years"])
+    bw = w / n
+    for i_, (yr, f_, s_) in enumerate(zip(S["years"], S["floods"], S["seen_s1"])):
+        bx = x + i_ * bw + 6
+        out.append(rect(bx, y + 180 - f_ * 17, bw - 12, f_ * 17, C["water_l"], C["water"], r=3, sw=1))
+        out.append(rect(bx + 4, y + 180 - s_ * 17, bw - 20, s_ * 17, C["sea"], r=2))
+        out.append(text(bx + (bw - 12) / 2, y + 196, f"'{str(yr)[2:]}", 11.5, 600, C["muted"], "middle"))
+    out.append(legend(x, y + 220, [(C["water_l"], "flood events"), (C["sea"], "seen by Sentinel-1")]))
+    out.append(text(x + w, y + 14, f"{S['n_floods']} floods, {S['n_seen']} seen", 13, 800, C["sea"], "end"))
+    return "".join(out)
+
+
+def t4_threshold(x, y, w, h):
+    S = STORY
+    hb = [v_ ** .5 for v_ in REAL["tile_hist_vv"]]
+    hx, hw = x + 4, w - 8
+    out = [histogram(hx, y + 40, hw, 110, hb, None, ["#B9AFA0"] * len(hb))]
+    for v_, lab, sub, col, dy in ((S["auto_t"], "from the image alone", f"≈ {S['auto_km2']} km² 'water' ✗", C["pt"], 0),
+                                  (S["gauge_t"], "from the gauge", f"{S['ours_km2']} km² water ✓", C["sea"], 0)):
+        fx = (v_ + 32) / 32
+        out.append(line(hx + fx * hw, y + 30, hx + fx * hw, y + 156, col, 3, "6 4"))
+    out.append(text(hx + (S["gauge_t"] + 32) / 32 * hw - 6, y + 18, f"gauge: {S['gauge_t']:.1f} dB", 12.5, 800,
+                    C["sea"], "end"))
+    out.append(text(hx + (S["auto_t"] + 32) / 32 * hw + 6, y + 18, f"image: ≈ {S['auto_t']:.0f} dB", 12.5, 800,
+                    C["pt"]))
+    out.append(text(x, y + 176, "← darker (water)", 12, 600, C["sea"]))
+    out.append(text(x + w, y + 176, "brighter (land) →", 12, 600, C["ground_d"], "end"))
+    out.append(text(x, y + 204, f"image only: ≈ {S['auto_km2']} km² 'water', half the county ✗", 12.5, 800, C["pt"]))
+    out.append(text(x, y + 226, f"gauge-chosen: {S['ours_km2']} km² on 17 Feb 2025 ✓", 12.5, 800, C["sea"]))
+    return "".join(out)
+
+
+def t5_gauge(x, y, w, h):
+    S = STORY
+    out = [gauge_icon(x + 20, y + 10, 110, .4)]
+    out.append(text(x + 92, y + 30, f"gauge: {S['stage_ft']} ft at the pass", 13, 800, C["ink"]))
+    out.append(text(x + 92, y + 52, f"→ water surface {S['wse_m']} m", 13, 800, C["sea"]))
+    out.append(text(x + 92, y + 74, "→ ground lower than that, linked", 12.5, 600, C["ink"]))
+    out.append(text(x + 92, y + 92, "   to the river, should be wet", 12.5, 600, C["ink"]))
+    out.append(text(x + 92, y + 114, "→ keep the radar threshold that", 12.5, 600, C["ink"]))
+    out.append(text(x + 92, y + 132, "   matches that area best", 12.5, 600, C["ink"]))
+    out.append(text(x, y + 166, "17 Feb 2025 flood area", 12.5, 800, C["ink"]))
+    for i_, (lab, v, col) in enumerate((("ours", S["ours_km2"], C["sea"]), ("OPERA", S["opera_km2"], C["edge"]))):
+        out.append(text(x, y + 190 + i_ * 22, lab, 12, 700, col))
+        out.append(rect(x + 60, y + 178 + i_ * 22, 12 * v, 16, col, r=3))
+        out.append(text(x + 66 + 12 * v, y + 191 + i_ * 22, f"{v} km²", 12, 800, col))
+    out.append(text(x + w, y + 166, f"map agreement F1 {S['f1']}", 12.5, 800, C["ok"], "end"))
+    return "".join(out)
+
+
+def t6_next(x, y, w, h):
+    steps = [("Water map from each satellite", "Sentinel-1 ✓ · NISAR · ICEYE/Umbra if ordered", C["sea"]),
+             ("All on one 10 m grid + confidence", "same classes for every sensor", C["water"]),
+             ("Combine over time", "weight each sensor by its measured accuracy", "#9D7CD8"),
+             ("Gauge + 1 m lidar → daily maps", "fills the days between satellite passes", C["ok"])]
+    out = []
+    for i_, (t_, sub, col) in enumerate(steps):
+        yy = y + 4 + i_ * 58
+        out.append(rect(x, yy, w, 46, "white", col, r=10, sw=2))
+        out.append(circle(x + 22, yy + 23, 12, col))
+        out.append(text(x + 22, yy + 28, str(i_ + 1), 13, 800, "white", "middle"))
+        out.append(text(x + 44, yy + 20, t_, 13.5, 800, C["ink"]))
+        out.append(text(x + 44, yy + 38, sub, 12, 500, C["muted"]))
+        if i_ < 3:
+            out.append(line(x + 22, yy + 46, x + 22, yy + 58, col, 2))
+    return "".join(out)
+
+
+def testbed_story():
+    S = STORY
+    W2, H2 = 1600, 1282
+    fc, fl = "#3A86A8", "#DCEEF5"
+    o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W2}" height="{H2}" viewBox="0 0 {W2} {H2}">',
+         rect(0, 0, W2, H2, C["bg"], r=0)]
+    o.append(chip(48, 30, "Our testbed · Bowling Green / Warren County, KY", fc, size=15))
+    o.append(text(48, 98, "Mapping floods in Bowling Green from space: what we are doing", 36, 800))
+    o.append(text(48, 130, "Phases 0 and 1 of the testbed · all numbers are our real results (2016–2025 data)", 18,
+                  500, C["muted"]))
+    o.append(rect(48, 152, W2 - 96, 66, fl, fc, r=18, sw=2))
+    o.append(text(76, 193, "Big idea:", 22, 800, fc))
+    o.append(text(196, 193, "Satellites show water now and then; river gauges show it every 15 minutes. "
+                  "Use each to fix the other.", 20, 600))
+    steps = [
+        ("The question", t1_question,
+         "Where does Bowling Green flood, and how deep, on many days and in fine detail? Water comes from "
+         "the rivers and from karst sinkholes."),
+        ("The ingredients", t2_ingredients,
+         f"Radar satellites see through cloud. Sentinel-1 imaged the county on {S['sensors'][0][1]} dates since 2016, "
+         f"NISAR on {S['sensors'][2][1]} since Oct 2025. No ICEYE or Umbra scene covers it yet."),
+        ("Phase 0: which floods were seen?", t3_calendar,
+         f"Gauges and news reports give {S['n_floods']} flood events since 2016; {S['n_seen']} were imaged by at "
+         "least one satellite. The biggest: Feb and Apr 2025."),
+        ("Phase 1: dark on radar = water", t4_threshold,
+         "Calm water reflects the radar away, so it looks dark. The hard part is the cut-off. Chosen from the "
+         "image alone it fails here: the county has too little water to learn from."),
+        ("Let the gauge choose the cut-off", t5_gauge,
+         "The gauge's water level plus the elevation map say where water must be; we keep the cut-off that "
+         "matches best. Our 17 Feb map agrees closely with NASA's OPERA map."),
+        ("Where it goes next", t6_next,
+         f"Flood-only calibration gives {S['high_t_barren']} dB (Barren) and {S['high_t_drakes']} dB (Drakes), but "
+         "from only 2–3 passes. More flood events, NISAR and ICEYE come next."),
+    ]
+    px0, pw, gap, ph = 48, 485, 24, 480
+    for i_, (title, ill, cap) in enumerate(steps):
+        rr, cc = divmod(i_, 3)
+        x, y = px0 + cc * (pw + gap), 244 + rr * (ph + 24)
+        o.append(rect(x, y, pw, ph, "white", C["line"], r=18, sw=2))
+        o.append(circle(x + 30, y + 32, 18, fc))
+        o.append(text(x + 30, y + 39, str(i_ + 1), 18, 800, "white", "middle"))
+        o.append(para(x + 58, y + 30, title, pw - 70, 18, 1.2, weight=800))
+        o.append(f"<g>{ill(x + 20, y + 78, pw - 40, 250)}</g>")
+        o.append(para(x + 20, y + 352, cap, pw - 40, 15, 1.4))
+        if cc < 2:
+            o.append(f'<path d="M{x + pw + 5},{y + ph / 2 - 10} L{x + pw + gap - 5},{y + ph / 2} '
+                     f'L{x + pw + 5},{y + ph / 2 + 10} Z" fill="{fc}" opacity=".85"/>')
+    o.append(text(48, H2 - 18, "Data: NASA/ESA Sentinel-1 (OPERA RTC, DSWx-S1), NASA-ISRO NISAR, USGS gauges and 3DEP, "
+                  "JRC water, Groundsource (Google Research). Schematic illustration.", 13, 500, C["muted"]))
+    o.append("</svg>")
+    (mf.OUT / "testbed_story.svg").write_text("".join(o))
+    return "testbed_story"
+
+
 if __name__ == "__main__":
     print(mf.OUT / f"{gauge_thresholding()}.svg")
     print(mf.OUT / f"{dswx_s1()}.svg")
     print(mf.OUT / f"{dswx_s1_quant()}.svg")
+    print(mf.OUT / f"{testbed_story()}.svg")

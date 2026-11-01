@@ -89,3 +89,5 @@ Regenerate with `python docs/figures/make_method_figures.py`.
 ![OPERA DSWx-S1 exact rules](methods/opera_dswx_s1_exact.svg)
 
 Real example values come from `scripts/t1_opera_rules_check.py` (Sentinel-1, 17 Feb 2025, Warren County).
+
+![Testbed story](methods/testbed_story.svg)
