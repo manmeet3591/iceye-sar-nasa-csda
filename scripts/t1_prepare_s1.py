@@ -21,8 +21,6 @@ from iceye_csda import testbed as tb  # noqa: E402
 from iceye_csda.auth import EarthdataSession  # noqa: E402
 from iceye_csda.config import load_config  # noqa: E402
 
-RTC = "OPERA_L2_RTC-S1_V1"
-DSWX = "OPERA_L3_DSWX-S1_V1"
 
 
 def main():
@@ -60,44 +58,12 @@ def main():
     # per date ---------------------------------------------------------------
     for track, t in p1["tracks"].items():
         for day in t["dates"]:
-            stem = out / f"{day}_T{int(track):03d}"
-            if not (stem.parent / f"{stem.name}_VV_db.tif").exists():
-                ents = [e for e in s1rtc.day_granules(RTC, bbox, day)
-                        if s1rtc.track_of(e["title"]) == int(track)]
-                files = {"VV": [], "VH": [], "mask": []}
-                for e in ents:
-                    links = s1rtc.https_links(e, ("_VV.tif", "_VH.tif", "_mask.tif"))
-                    for key, suf in (("VV", "_VV.tif"), ("VH", "_VH.tif"), ("mask", "_mask.tif")):
-                        if suf in links:
-                            u = links[suf]
-                            files[key].append(s1rtc.download(u, raw / day / u.rsplit("/", 1)[-1],
-                                                             session))
-                print(f"{day} T{track}: {len(ents)} bursts")
-                # mask: 0 = valid in OPERA RTC; anything else is shadow/layover/invalid
-                bad = np.zeros(grid[2], bool)
-                for m in files["mask"]:
-                    a = s1rtc.to_grid(m, grid, "nearest", src_nodata=255)
-                    bad |= np.isfinite(a) & (a > 0)
-                for pol in ("VV", "VH"):
-                    lin = s1rtc.mosaic_mean(files[pol], grid)
-                    s1rtc.write_grid(stem.parent / f"{stem.name}_{pol}_db.tif", s1rtc.db(lin), grid)
-                vv = s1rtc.read_grid(stem.parent / f"{stem.name}_VV_db.tif")
-                s1rtc.write_grid(stem.parent / f"{stem.name}_valid.tif",
-                                 (np.isfinite(vv) & ~bad).astype("uint8"), grid, nodata=None,
-                                 dtype="uint8")
-                (stem.parent / f"{stem.name}_time.txt").write_text(
-                    str(s1rtc.acquisition_time(ents)))
-            dsw = out / f"{day}_dswx_wtr.tif"
-            if not dsw.exists():
-                ents = s1rtc.newest_per_tile([e for e in s1rtc.day_granules(DSWX, bbox, day)])
-                paths = []
-                for e in ents:
-                    u = s1rtc.https_links(e, ("_B01_WTR.tif",)).get("_B01_WTR.tif")
-                    if u:
-                        paths.append(s1rtc.download(u, raw / day / u.rsplit("/", 1)[-1], session))
-                if paths:
-                    s1rtc.write_grid(dsw, s1rtc.mosaic_first(paths, grid), grid)
-                print(f"{day}: DSWx-S1 tiles {len(paths)}")
+            n = s1rtc.prepare_pass(day, track, grid, bbox, raw, out, session)
+            if n >= 0:
+                print(f"{day} T{track}: {n} bursts")
+            n = s1rtc.prepare_dswx(day, grid, bbox, raw, out, session)
+            if n >= 0:
+                print(f"{day}: DSWx-S1 tiles {n}")
     print("done:", out)
 
 

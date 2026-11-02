@@ -249,3 +249,54 @@ def acquisition_time(entries):
 
 def utc(dt):
     return dt.astimezone(timezone.utc)
+
+
+RTC = "OPERA_L2_RTC-S1_V1"
+DSWX = "OPERA_L3_DSWX-S1_V1"
+
+
+def prepare_pass(day, track, grid, bbox, raw, out, session):
+    """Download one Sentinel-1 pass (all bursts of a track on a day) and grid it.
+
+    Writes <out>/<day>_T<track>_{VV_db,VH_db,valid}.tif and _time.txt; skips if done.
+    Returns the number of bursts (0 if nothing was found).
+    """
+    stem = f"{day}_T{int(track):03d}"
+    if (out / f"{stem}_VV_db.tif").exists():
+        return -1
+    ents = [e for e in day_granules(RTC, bbox, day) if track_of(e["title"]) == int(track)]
+    if not ents:
+        return 0
+    files = {"VV": [], "VH": [], "mask": []}
+    for e in ents:
+        links = https_links(e, ("_VV.tif", "_VH.tif", "_mask.tif"))
+        for key, suf in (("VV", "_VV.tif"), ("VH", "_VH.tif"), ("mask", "_mask.tif")):
+            if suf in links:
+                u = links[suf]
+                files[key].append(download(u, raw / day / u.rsplit("/", 1)[-1], session))
+    bad = np.zeros(grid[2], bool)           # OPERA RTC mask: 0 = valid, else shadow/layover/invalid
+    for m in files["mask"]:
+        a = to_grid(m, grid, "nearest", src_nodata=255)
+        bad |= np.isfinite(a) & (a > 0)
+    for pol in ("VV", "VH"):
+        write_grid(out / f"{stem}_{pol}_db.tif", db(mosaic_mean(files[pol], grid)), grid)
+    vv = read_grid(out / f"{stem}_VV_db.tif")
+    write_grid(out / f"{stem}_valid.tif", (np.isfinite(vv) & ~bad).astype("uint8"), grid, nodata=None,
+               dtype="uint8")
+    (out / f"{stem}_time.txt").write_text(str(acquisition_time(ents)))
+    return len(ents)
+
+
+def prepare_dswx(day, grid, bbox, raw, out, session):
+    """Download and grid the newest DSWx-S1 WTR tiles for a day. Returns number of tiles."""
+    dst = out / f"{day}_dswx_wtr.tif"
+    if dst.exists():
+        return -1
+    paths = []
+    for e in newest_per_tile(day_granules(DSWX, bbox, day)):
+        u = https_links(e, ("_B01_WTR.tif",)).get("_B01_WTR.tif")
+        if u:
+            paths.append(download(u, raw / day / u.rsplit("/", 1)[-1], session))
+    if paths:
+        write_grid(dst, mosaic_first(paths, grid), grid)
+    return len(paths)

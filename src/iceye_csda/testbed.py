@@ -315,3 +315,35 @@ def observations_for(events, acq, window_days, min_coverage, max_cloud=None):
 
 def today():
     return datetime.utcnow().date()
+
+
+def gauge_iv(site, start, end=None, cache=None, session=None):
+    """Full 15-minute gage height (ft, UTC index) from USGS, fetched by year and cached as CSV."""
+    if cache is not None and cache.exists():
+        s = pd.read_csv(cache, index_col=0, parse_dates=True).iloc[:, 0]
+        s.index = pd.to_datetime(s.index, utc=True)
+        return s
+    sess = session or requests.Session()
+    end = end or date.today().isoformat()
+    parts = []
+    for y in range(int(start[:4]), int(end[:4]) + 1):
+        iv = _nwis_series("iv", site, "00065", None, max(start, f"{y}-01-01"), min(end, f"{y}-12-31"), sess)
+        if len(iv):
+            parts.append(pd.Series(iv.values, index=pd.to_datetime(iv.index, utc=True)))
+    s = pd.concat(parts).sort_index()
+    s = s[~s.index.duplicated()]
+    s.name = "stage_ft"
+    if cache is not None:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        s.to_csv(cache)
+    return s
+
+
+def stage_at(series, when, window_min=60):
+    """Gage height nearest to `when` within +/- window_min, else NaN."""
+    when = pd.Timestamp(when)
+    when = when.tz_localize("UTC") if when.tzinfo is None else when.tz_convert("UTC")
+    i = series.index.get_indexer([when], method="nearest")[0]
+    if i < 0 or abs(series.index[i] - when) > pd.Timedelta(minutes=window_min):
+        return np.nan
+    return float(series.iloc[i])

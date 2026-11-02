@@ -82,3 +82,10 @@ def test_groundsource_filter(tmp_path):
     gs = tb.groundsource_events(path, aoi, start="2016-01-01")
     assert list(gs["uuid"]) == ["a", "b"]
     assert np.isclose(gs.iloc[0]["event_in_aoi"], 1.0) and gs.iloc[1]["event_in_aoi"] < 0.5
+
+
+def test_stage_at_nearest_within_window():
+    idx = pd.date_range("2025-02-17 23:00", periods=5, freq="15min", tz="UTC")
+    s = pd.Series([30.0, 31.0, 32.0, 33.0, 34.0], index=idx)
+    assert tb.stage_at(s, "2025-02-17T23:39:51Z") == 33.0          # nearest reading 23:45
+    assert np.isnan(tb.stage_at(s, "2025-02-18T03:00:00Z"))         # nothing within 60 min

@@ -67,3 +67,9 @@ flood:
   slope_max_deg: 5
   region_grow_db: 1.0
   permanent_water_occurrence: 80
+
+# Phase 2: calibrate the cut-off on every high-water Sentinel-1 pass since 2016
+phase2:
+  store: /data1/iceye-testbed/warren   # large downloads live on the /data1 disk
+  tracks: [19, 121]                    # track 26 has only 2 dates over the county
+  min_stage_ft: 16                     # river level at the pass (either gauge)
