@@ -921,8 +921,214 @@ def testbed_story():
     return "testbed_story"
 
 
+# ======================================================= status story ==
+# Real values: phase 2 (outputs/warren/phase2/per_pass.csv, landcover.csv), pass counts from
+# <store>/s1_passes_stage.csv, phase 3 (outputs/warren/phase3/*). Nothing below is invented.
+STATUS = dict(
+    passes=574, stage_counts=[(">= 12 ft", 76), (">= 16 ft", 16), (">= 20 ft", 9), (">= 26 ft", 2)],
+    per_pass=[(16.82, -14.75, 19), (24.76, -14.25, 19), (16.61, -16.0, 121), (19.24, -14.25, 19),
+              (23.21, -15.0, 19), (16.76, -15.0, 121), (16.54, -15.75, 19), (25.29, -14.75, 121),
+              (21.53, -15.25, 19), (19.71, -14.5, 121), (20.31, -14.75, 19), (19.65, -15.25, 19),
+              (22.93, -15.0, 19), (18.73, -15.0, 19), (34.67, -14.5, 121), (31.72, -13.5, 121)],
+    pooled=-15.25, f1_own=0.35, f1_loo=0.33,
+    lc=[("tree cover", 52, 9), ("water (river edge)", 25, 19), ("grassland", 12, 75), ("cropland", 10, 91),
+        ("built-up", 1, 0)],
+    hls_scenes=11, hls_clear=1, hls_tree_radar=7, hls_tree_optical=77, hls_f1_expected=0.64,
+)
+
+
+def s1_question_narrow(x, y, w, h):
+    out = [mf.river_plan(x, y + 6, w, 160, True)]
+    for fx, fy in ((.18, .20), (.70, .82), (.86, .18)):
+        out.append(circle(x + fx * w, y + 6 + fy * 160, 8, "#9CC8EE", C["sea"], 1.5))
+    out.append(text(x + .62 * w, y + 30, "sinkholes", 12, 700, C["sea"], "middle"))
+    out.append(gauge_icon(x + .45 * w, y + 60, 44, .5))
+    out.append(text(x + w / 2, y + 194, "Barren River · Drakes Creek", 13, 700, C["ink"], "middle"))
+    out.append(text(x + w / 2, y + 214, "where? how deep? which days?", 12.5, 600, C["muted"], "middle"))
+    return "".join(out)
+
+
+def s2_ingredients_narrow(x, y, w, h):
+    S = STORY
+    out = []
+    mx = max(v for _, v in S["sensors"])
+    for i_, (lab, v) in enumerate(S["sensors"]):
+        yy = y + 4 + i_ * 30
+        out.append(text(x, yy + 15, lab, 12, 700, C["ink"]))
+        bw = (w - 230) * v / mx
+        out.append(rect(x + 150, yy, max(bw, 2), 20, C["sea"] if v else C["pt"], r=4))
+        out.append(text(x + 156 + bw, yy + 15, f"{v}" if v else "0", 12, 800, C["sea"] if v else C["pt"]))
+    out.append(chip(x, y + 160, "2 USGS gauges", C["ok"], size=12.5))
+    out.append(chip(x + 140, y + 160, f"{S['gs_reports']} news reports", "#9D7CD8", size=12.5))
+    out.append(text(x, y + 214, "dates imaging the county; 0 = none yet", 12, 600, C["muted"]))
+    return "".join(out)
+
+
+def s3_funnel(x, y, w, h):
+    S = STATUS
+    out = [text(x, y + 14, f"{S['passes']} Sentinel-1 passes since 2016", 13.5, 800, C["ink"])]
+    out.append(text(x, y + 34, "river level at the moment of the pass:", 12.5, 600, C["muted"]))
+    for i_, (lab, n) in enumerate(S["stage_counts"]):
+        yy = y + 52 + i_ * 34
+        bw = (w - 130) * (n / S["stage_counts"][0][1])
+        out.append(text(x, yy + 17, lab, 13, 700, C["ink"]))
+        out.append(rect(x + 70, yy, max(bw, 3), 24, C["sea"] if lab != ">= 16 ft" else C["edge"], r=4))
+        out.append(text(x + 76 + bw, yy + 17, f"{n}", 13, 800, C["edge"] if lab == ">= 16 ft" else C["sea"]))
+    out.append(text(x, y + 214, "16 passes used to calibrate (2016–2025)", 12.5, 800, C["edge"]))
+    return "".join(out)
+
+
+def s4_cut(x, y, w, h):
+    S = STATUS
+    hb = [v_ ** .5 for v_ in REAL["tile_hist_vv"]]
+    out = [histogram(x, y + 30, w, 100, hb, None, ["#B9AFA0"] * len(hb))]
+    for v_, lab, col, anchor, dx in ((-9.0, "image ≈ −9", C["pt"], "start", 5),
+                                     (S["pooled"], f"gauge {S['pooled']}", C["sea"], "end", -5)):
+        fx = (v_ + 32) / 32
+        out.append(line(x + fx * w, y + 22, x + fx * w, y + 136, col, 3, "6 4"))
+        out.append(text(x + fx * w + dx, y + 16, lab, 12, 800, col, anchor))
+    out.append(text(x, y + 156, "← dark (water)", 11.5, 600, C["sea"]))
+    out.append(text(x + w, y + 156, "bright (land) →", 11.5, 600, C["ground_d"], "end"))
+    out.append(text(x, y + 184, "image only: ≈ half the county 'water' ✗", 12.5, 800, C["pt"]))
+    out.append(text(x, y + 204, "gauge-chosen: matches NASA OPERA ✓", 12.5, 800, C["sea"]))
+    return "".join(out)
+
+
+def s5_scatter(x, y, w, h):
+    S = STATUS
+    ax_, ay_, aw_, ah_ = x + 34, y + 10, w - 44, 150
+    out = [axes(ax_, ay_, aw_, ah_, "", "")]
+    lo, hi = -16.5, -13.0
+    yy = lambda v: ay_ + ah_ - (v - lo) / (hi - lo) * ah_   # noqa: E731
+    xx = lambda f: ax_ + (f - 15) / (36 - 15) * aw_          # noqa: E731
+    out.append(line(ax_, yy(S["pooled"]), ax_ + aw_, yy(S["pooled"]), C["edge"], 2, "6 4"))
+    for st_, best, tr in S["per_pass"]:
+        out.append(circle(xx(st_), yy(best), 6, C["sea"] if tr == 19 else C["water"], "white", 1.5))
+    out.append(text(ax_ + aw_, yy(S["pooled"]) + 18, f"one cut-off: {S['pooled']} dB", 12.5, 800, C["edge"], "end"))
+    for v_ in (-16, -15, -14, -13):
+        out.append(text(ax_ - 6, yy(v_) + 4, f"{v_}", 10.5, 500, C["muted"], "end"))
+    for f_ in (15, 25, 35):
+        out.append(text(xx(f_), ay_ + ah_ + 15, f"{f_} ft", 10.5, 500, C["muted"], "middle"))
+    out.append(text(x, y + 196, "each dot = one flood pass: its best cut-off", 12, 600, C["muted"]))
+    out.append(text(x, y + 216, f"one shared cut-off costs only {S['f1_own'] - S['f1_loo']:.2f} in F1", 12.5, 800,
+                    C["ok"]))
+    return "".join(out)
+
+
+def s6_landcover(x, y, w, h):
+    S = STATUS
+    out = []
+    for i_, (lab, share, det) in enumerate(S["lc"]):
+        yy = y + 8 + i_ * 40
+        out.append(text(x, yy + 15, lab, 12.5, 700, C["ink"]))
+        bw = (w - 200) * share / 52
+        out.append(rect(x + 130, yy + 2, bw, 20, "#D9D0C2", r=3))
+        out.append(rect(x + 130, yy + 2, bw * det / 100, 20, C["sea"], r=3))
+        out.append(text(x + 136 + bw, yy + 17, f"{det}% seen", 12, 800, C["sea"] if det > 50 else C["pt"]))
+    out.append(legend(x, y + 224, [("#D9D0C2", "share of expected flood"), (C["sea"], "seen by radar")], size=11.5))
+    return "".join(out)
+
+
+def s7_optical(x, y, w, h):
+    S = STATUS
+    out = []
+    for i_ in range(S["hls_scenes"]):
+        cx = x + i_ * 28
+        clear = i_ == 6
+        out.append(rect(cx, y + 6, 24, 24, "#FFFFFF" if clear else "#B8B8B8", C["sea"] if clear else "none", r=4,
+                        sw=2.5))
+    out.append(text(x, y + 50, f"{S['hls_scenes']} optical scenes near flood passes:", 12.5, 700, C["ink"]))
+    out.append(text(x, y + 68, f"{S['hls_scenes'] - S['hls_clear']} clouded over · 1 clear (14 Feb 2020)", 12.5, 700,
+                    C["muted"]))
+    out.append(text(x, y + 100, "wooded floodplain the gauge says is wet:", 12.5, 800, C["ink"]))
+    for i_, (lab, v_, col) in enumerate((("radar", S["hls_tree_radar"], C["sea"]),
+                                         ("optical", S["hls_tree_optical"], C["ok"]))):
+        yy = y + 114 + i_ * 30
+        out.append(text(x, yy + 16, lab, 12.5, 700, col))
+        out.append(rect(x + 62, yy + 2, (w - 120) * v_ / 100, 20, col, r=3))
+        out.append(text(x + 68 + (w - 120) * v_ / 100, yy + 17, f"{v_}%", 12.5, 800, col))
+    out.append(text(x, y + 196, f"optical vs gauge-expected area: F1 {S['hls_f1_expected']}", 12.5, 800, C["ink"]))
+    out.append(text(x, y + 216, "leafless trees in Feb: optical sees through", 12, 600, C["muted"]))
+    return "".join(out)
+
+
+def s8_status(x, y, w, h):
+    items = [("✓", "flood calendar 2016–2026", C["ok"]), ("✓", "cut-off: −15.25 dB, stable", C["ok"]),
+             ("✓", "open fields mapped well", C["ok"]), ("✗", "flood under trees: 9% seen", C["pt"]),
+             ("✗", "optical mostly clouded", C["pt"]), ("→", "NISAR L-band at next flood", "#9D7CD8"),
+             ("→", "VH / ratio test for forest", "#9D7CD8"), ("→", "gauge + lidar daily maps", "#9D7CD8")]
+    out = []
+    for i_, (mk, t_, col) in enumerate(items):
+        yy = y + 4 + i_ * 29
+        out.append(circle(x + 12, yy + 10, 11, col))
+        out.append(text(x + 12, yy + 15, mk, 13, 800, "white", "middle"))
+        out.append(text(x + 32, yy + 15, t_, 13.5, 700, C["ink"]))
+    return "".join(out)
+
+
+def status_story():
+    S = STATUS
+    W2, H2 = 1600, 1236
+    fc, fl = "#3A86A8", "#DCEEF5"
+    o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W2}" height="{H2}" viewBox="0 0 {W2} {H2}">',
+         rect(0, 0, W2, H2, C["bg"], r=0)]
+    o.append(chip(48, 30, "Our testbed · Bowling Green / Warren County, KY · status Nov 2026", fc, size=15))
+    o.append(text(48, 98, "Where the Bowling Green flood-mapping testbed stands", 36, 800))
+    o.append(text(48, 130, "Phases 0–3 · every number is a real result from 2016–2025 Sentinel-1, OPERA, USGS and "
+                  "ESA data", 18, 500, C["muted"]))
+    o.append(rect(48, 150, W2 - 96, 64, fl, fc, r=18, sw=2))
+    o.append(text(76, 190, "Big idea:", 22, 800, fc))
+    o.append(text(196, 190, "The cut-off is solved. What remains is water the radar cannot see: under trees.",
+                  20, 600))
+    steps = [
+        ("The question", s1_question_narrow,
+         "Where does Bowling Green flood, how deep, and on which days, in fine detail? Rivers and karst sinkholes "
+         "both flood here."),
+        ("The ingredients", s2_ingredients_narrow,
+         "Radar sees through cloud: Sentinel-1 since 2016, NISAR since Oct 2025. Two gauges and news reports "
+         "say when it flooded."),
+        ("Phase 0: high water under a satellite?", s3_funnel,
+         "Floods here rise and fall fast. Only 16 of 574 passes caught a river at 16 ft or more at the moment "
+         "of the pass."),
+        ("Phase 1: dark = water", s4_cut,
+         "Calm water looks dark. A cut-off taken from the image alone fails in a county with this little "
+         "water; the gauge picks a sensible one."),
+        ("Phase 2: the cut-off is stable", s5_scatter,
+         f"On 16 flood passes each pass's best cut-off lies within −16.0 to −13.5 dB. One cut-off "
+         f"({S['pooled']} dB) works for all of them."),
+        ("Phase 2: what radar still misses", s6_landcover,
+         "Half the expected flood is under trees, and radar sees only 9% of it. In open fields it sees 75–91%."),
+        ("Phase 3: optical check", s7_optical,
+         "Floods bring clouds: 10 of 11 optical scenes were covered. The clear one confirms the gauge's "
+         "expected area and shows water under the leafless trees."),
+        ("Status and next steps", s8_status,
+         "Done: calendar, cut-off, open-field maps. Open: water under trees (NISAR L-band, VH tests) and "
+         "daily maps between passes."),
+    ]
+    px0, pw, gap, ph = 48, 358, 22, 474
+    for i_, (title, ill, cap) in enumerate(steps):
+        rr, cc = divmod(i_, 4)
+        x, y = px0 + cc * (pw + gap), 236 + rr * (ph + 22)
+        o.append(rect(x, y, pw, ph, "white", C["line"], r=18, sw=2))
+        o.append(circle(x + 30, y + 32, 18, fc))
+        o.append(text(x + 30, y + 39, str(i_ + 1), 18, 800, "white", "middle"))
+        o.append(para(x + 58, y + 30, title, pw - 70, 17.5, 1.2, weight=800))
+        o.append(f"<g>{ill(x + 20, y + 84, pw - 40, 240)}</g>")
+        o.append(para(x + 20, y + 360, cap, pw - 40, 14.5, 1.4))
+        if cc < 3:
+            o.append(f'<path d="M{x + pw + 4},{y + ph / 2 - 10} L{x + pw + gap - 4},{y + ph / 2} '
+                     f'L{x + pw + 4},{y + ph / 2 + 10} Z" fill="{fc}" opacity=".85"/>')
+    o.append(text(48, H2 - 14, "Data: NASA/ESA Sentinel-1 (OPERA RTC, DSWx-S1, DSWx-HLS), NASA-ISRO NISAR, USGS gauges "
+                  "and 3DEP, ASF HAND, JRC water, ESA WorldCover, Groundsource. Schematic illustration.", 13, 500,
+                  C["muted"]))
+    o.append("</svg>")
+    (mf.OUT / "testbed_status.svg").write_text("".join(o))
+    return "testbed_status"
+
+
 if __name__ == "__main__":
     print(mf.OUT / f"{gauge_thresholding()}.svg")
     print(mf.OUT / f"{dswx_s1()}.svg")
     print(mf.OUT / f"{dswx_s1_quant()}.svg")
     print(mf.OUT / f"{testbed_story()}.svg")
+    print(mf.OUT / f"{status_story()}.svg")
