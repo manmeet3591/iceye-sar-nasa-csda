@@ -73,3 +73,7 @@ phase2:
   store: /data1/iceye-testbed/warren   # large downloads live on the /data1 disk
   tracks: [19, 121]                    # track 26 has only 2 dates over the county
   min_stage_ft: 16                     # river level at the pass (either gauge)
+
+# Phase 3: optical QA with OPERA DSWx-HLS
+phase3:
+  min_clear: 0.5            # use an optical scene only if >= 50 % of the Barren reach is cloud-free
