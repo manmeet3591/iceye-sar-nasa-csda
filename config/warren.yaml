@@ -77,3 +77,8 @@ phase2:
 # Phase 3: optical QA with OPERA DSWx-HLS
 phase3:
   min_clear: 0.5            # use an optical scene only if >= 50 % of the Barren reach is cloud-free
+
+# Phase 4: flooded forest - change from a dry pass on the same track
+phase4:
+  dry_max_ft: 9            # both gauges at or below this at the reference pass
+  max_gap_days: 60         # reference within this many days of the flood pass (same leaf state)
