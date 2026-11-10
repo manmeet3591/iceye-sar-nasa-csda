@@ -15,6 +15,7 @@ dependencies:
   - pandas
   - shapely
   - pyarrow
+  - scikit-image
   - jupyterlab
   - pre-commit
   - pytest

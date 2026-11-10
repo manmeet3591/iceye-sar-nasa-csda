@@ -82,3 +82,7 @@ phase3:
 phase4:
   dry_max_ft: 9            # both gauges at or below this at the reference pass
   max_gap_days: 60         # reference within this many days of the flood pass (same leaf state)
+
+# Phase 5: daily flood maps from the Barren River gauge + 1 m lidar
+phase5:
+  valid_km: 6               # agreement with Sentinel-1 holds within this distance of the gauge
