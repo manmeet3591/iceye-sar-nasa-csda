@@ -56,3 +56,28 @@ class _CSDASession(requests.Session):
 
 def csda_session():
     return _CSDASession(get_token())
+
+
+EARTHDATA_HOSTS = (".asf.alaska.edu", ".earthdata.nasa.gov", ".earthdatacloud.nasa.gov")
+
+
+class EarthdataSession(requests.Session):
+    """Bearer-token session for NASA Earthdata archives (ASF, PO.DAAC, ...).
+
+    The token follows redirects only to NASA/ASF hosts and is dropped before
+    the final pre-signed S3 or CloudFront URL. Token: EARTHDATA_TOKEN.
+    """
+
+    def __init__(self, token=None):
+        super().__init__()
+        self._token = token or os.environ.get("EARTHDATA_TOKEN", "").strip()
+        if not self._token:
+            raise RuntimeError("Set EARTHDATA_TOKEN (urs.earthdata.nasa.gov -> Generate Token).")
+        self.headers["Authorization"] = f"Bearer {self._token}"
+
+    def rebuild_auth(self, prepared_request, response):
+        host = requests.utils.urlparse(prepared_request.url).hostname or ""
+        if host.endswith(EARTHDATA_HOSTS):
+            prepared_request.headers["Authorization"] = f"Bearer {self._token}"
+        else:
+            prepared_request.headers.pop("Authorization", None)

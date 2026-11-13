@@ -77,3 +77,19 @@ All drawings are schematic (no satellite imagery). Regenerate with `python docs/
 ## Which to use with ICEYE + USGS 3DEP?
 
 Flood extent by change detection / local thresholding with slope, HAND and permanent-water masks → depth with **FLEXTH** and **FwDET v2.1** (v2.0 coast rule for Florida) → **HAND/RICorDE** cross-check → validate with USGS high-water marks and gauges.
+
+## Methods used in this repository
+
+![Gauge-based thresholding](methods/gauge_based_thresholding.svg)
+
+Regenerate with `python docs/figures/make_method_figures.py`.
+
+![How OPERA DSWx-S1 works](methods/opera_dswx_s1.svg)
+
+![OPERA DSWx-S1 exact rules](methods/opera_dswx_s1_exact.svg)
+
+Real example values come from `scripts/t1_opera_rules_check.py` (Sentinel-1, 17 Feb 2025, Warren County).
+
+![Testbed story](methods/testbed_story.svg)
+
+![Testbed status](methods/testbed_status.svg)

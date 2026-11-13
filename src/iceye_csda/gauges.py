@@ -184,3 +184,13 @@ def score(errors):
         return {"n": 0, "bias": np.nan, "mae": np.nan, "rmse": np.nan}
     return {"n": int(e.size), "bias": float(e.mean()), "mae": float(np.abs(e).mean()),
             "rmse": float(np.sqrt((e ** 2).mean()))}
+
+
+def fetch_sites_by_id(site_nos, session=None):
+    """USGS site metadata (location, gage datum) for a list of site numbers."""
+    s = session or requests
+    r = s.get(f"{NWIS}/site/", timeout=120, params={
+        "format": "rdb", "sites": ",".join(site_nos), "siteOutput": "expanded",
+        "siteStatus": "all"})
+    r.raise_for_status()
+    return {row["site_no"]: row for row in _rdb(r.text)}
