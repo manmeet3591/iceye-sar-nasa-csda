@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, "src")
-from iceye_csda import sar  # noqa: E402
+from iceye_csda import sar, scene_source  # noqa: E402
 from iceye_csda.config import load_config  # noqa: E402
 from iceye_csda.metadata import read_metadata  # noqa: E402
 
@@ -27,6 +27,7 @@ def process_grd(path, out_dir, cfg):
     out = out_dir / f"{path.stem}_sigma0_db.tif"
     with rasterio.open(path) as src:
         tags = src.tags()
+    tags["DATA_SOURCE"] = scene_source(path)
     geo = sar.georeference(path, md)
 
     # Multilook to ~target resolution in strips (memory-safe), then calibrate.
