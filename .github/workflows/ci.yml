@@ -19,5 +19,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install numpy scipy pyyaml requests affine pandas shapely pyarrow scikit-image pytest
+      - run: pip install numpy scipy pyyaml requests affine pandas shapely pyarrow scikit-image rasterio pytest
       - run: pytest -q
